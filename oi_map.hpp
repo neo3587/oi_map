@@ -317,7 +317,7 @@ namespace neo {
 
 			iterator erase(const_iterator pos) {
 				_map.erase(pos->first);
-				return _list.erase(pos._get());
+				return _list.erase(pos);
 			}
 			size_type erase(const key_type& key) {
 				typename _map_t::const_iterator it = _map.find(key);
