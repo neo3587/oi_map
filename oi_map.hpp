@@ -9,15 +9,16 @@
 	Author: neo3587
 
 	http://www.cplusplus.com/reference/map/map/
-	
+	http://www.cplusplus.com/reference/map/multimap/
 
 	Notes:
 		- Requires C++11 or higher
 		- m_iterators follows the predicate order instead of the insertion order (just like a normal std::map)
+		- m_iterators are convertible to iterators, but not vice versa
+		- oi_multimap uses m_iterators for lower_bound(), upper_bound() and equal_range(), oi_iterators cannot work properly with these functions
 		- emplace_hint is just there for compatibility, it won't speed up the insertions
 
 	TODO:
-		- oi_multimap
 		- oi_unordered_map
 		- oi_unordered_multimap
 
@@ -33,270 +34,404 @@
 
 namespace neo {
 
+	namespace __oi_map_details {
+
+		template<class MappedIter, class MapIterator>
+		class oi_iterator {
+
+			public:
+
+				using iterator_category = std::bidirectional_iterator_tag;
+				using value_type		= typename MappedIter::value_type;
+				using difference_type	= typename MappedIter::difference_type;
+				using pointer			= typename MappedIter::pointer;
+				using reference			= typename MappedIter::reference;
+
+				oi_iterator() {}
+				oi_iterator(const oi_iterator&) = default;
+				oi_iterator(oi_iterator&&) = default;
+				oi_iterator& operator=(const oi_iterator&) = default;
+				oi_iterator& operator=(oi_iterator&&) = default;
+				oi_iterator(const MapIterator& iter) : _iter(iter) {}
+				oi_iterator(MapIterator&& iter) : _iter(std::forward<MapIterator>(iter)) {}
+
+				bool operator==(const oi_iterator& other) const {
+					return _iter == other._iter;
+				}
+				bool operator!=(const oi_iterator& other) const {
+					return !(*this == other);
+				}
+
+				oi_iterator& operator++() {
+					++_iter;
+					return *this;
+				}
+				oi_iterator operator++(int) {
+					oi_iterator tmp(*this);
+					++(*this);
+					return tmp;
+				}
+
+				oi_iterator& operator--() {
+					--_iter;
+					return *this;
+				}
+				oi_iterator operator--(int) {
+					oi_iterator tmp(*this);
+					--(*this);
+					return tmp;
+				}
+
+				reference operator*() {
+					return _iter->second.operator*();
+				}
+				const reference operator*() const {
+					return _iter->second.operator*();
+				}
+
+				pointer operator->() {
+					return _iter->second.operator->();
+				}
+				const pointer operator->() const {
+					return _iter->second.operator->();
+				}
+
+			protected:
+		
+				MapIterator _iter;
+
+		};
+
+		template<template<class...> class Map, class Key, class Value, class Predicate, class Allocator>
+		class oi_base {
+
+			protected:
+
+				using _mm_type	= std::is_same<Map<Key, Value, Predicate, Allocator>, std::map<Key, Value, Predicate, Allocator>>;
+				using _list_t	= std::list<std::pair<const Key, Value>>;
+				using _map_t	= Map<const Key, typename _list_t::iterator, Predicate, std::allocator<std::pair<const Key, typename _list_t::iterator>>>;
+
+				_list_t _list;
+				_map_t	_map;
+
+			public:
+
+				// Member types:
+
+				using key_type					= Key;
+				using mapped_type				= Value;
+				using value_type				= std::pair<const key_type, mapped_type>;
+				using size_type					= typename _map_t::size_type;
+				using difference_type			= typename _map_t::difference_type;
+
+				using allocator_type			= Allocator;
+
+				using pointer					= typename Allocator::pointer;
+				using const_pointer				= typename Allocator::const_pointer;
+				using reference					= typename Allocator::reference;
+				using const_reference			= typename Allocator::const_reference;
+
+				using key_compare				= typename _map_t::key_compare;
+				using value_compare				= typename _map_t::value_compare;
+
+				//class iterator;
+				class const_iterator;
+				class m_iterator;
+				class m_const_iterator;
+
+				class iterator : public _list_t::iterator {
+					public:
+						iterator() {}
+						iterator(const iterator&) = default;
+						iterator(iterator&&) = default;
+						iterator& operator=(const iterator&) = default;
+						iterator& operator=(iterator&&) = default;
+						
+						iterator(const m_iterator& other) : _list_t::iterator(other._iter->second) {}
+						iterator(m_iterator&& other) : _list_t::iterator(std::forward<m_iterator>(other)._iter->second) {}
+
+						iterator(const typename _list_t::iterator& other) : _list_t::iterator(other) {}
+						iterator(typename _list_t::iterator&& other) : _list_t::iterator(other) {}
+				};
+				class const_iterator : public _list_t::const_iterator {
+					public:
+						const_iterator() {}
+						const_iterator(const const_iterator&) = default;
+						const_iterator(const_iterator&&) = default;
+						const_iterator& operator=(const const_iterator&) = default;
+						const_iterator& operator=(const_iterator&&) = default;
+
+						const_iterator(const iterator& other) : _list_t::const_iterator(other) {}
+						const_iterator(iterator&& other) : _list_t::const_iterator(std::forward<iterator>(other)) {}
+
+						const_iterator(const m_iterator& other) : _list_t::const_iterator(other._iter->second) {}
+						const_iterator(m_iterator&& other) : _list_t::const_iterator(std::forward<m_iterator>(other)._iter->second) {}
+						const_iterator(const m_const_iterator& other) : _list_t::const_iterator(other._iter->second) {}
+						const_iterator(m_const_iterator&& other) : _list_t::const_iterator(std::forward<m_const_iterator>(other)._iter->second) {}
+
+						const_iterator(const typename _list_t::const_iterator& other) : _list_t::const_iterator(other) {}
+						const_iterator(typename _list_t::const_iterator&& other) : _list_t::const_iterator(other) {}
+				};
+				using reverse_iterator			= std::reverse_iterator<iterator>;
+				using const_reverse_iterator	= std::reverse_iterator<const_iterator>;
+
+				class m_iterator : public oi_iterator<iterator, typename _map_t::iterator> {
+					public:
+						using oi_iterator<iterator, typename _map_t::iterator>::oi_iterator;
+						friend iterator;
+						friend const_iterator;
+						friend m_const_iterator;
+						friend oi_base;
+				};
+				class m_const_iterator : public oi_iterator<const_iterator, typename _map_t::const_iterator> {
+					public:
+						using oi_iterator<const_iterator, typename _map_t::const_iterator>::oi_iterator;
+						m_const_iterator(const m_iterator& other) {
+							this->_iter = other._iter;
+						}
+						m_const_iterator(m_iterator&& other) {
+							this->_iter = other._iter;
+						}
+						friend const_iterator;
+						friend oi_base;
+				};
+				using m_reverse_iterator		= std::reverse_iterator<m_iterator>;
+				using m_const_reverse_iterator	= std::reverse_iterator<m_const_iterator>;
+
+				// Constructors:
+
+				oi_base() {}
+				explicit oi_base(const allocator_type& alloc) {}
+
+				oi_base(const oi_base&) = default;
+				oi_base(const oi_base& other, const allocator_type& alloc) : oi_base(other) {}
+
+				oi_base(oi_base&&) = default;
+				oi_base(oi_base&& other, const allocator_type& alloc) : oi_base(std::forward<oi_base>(other)) {}
+
+				oi_base& operator=(const oi_base&) = default;
+				oi_base& operator=(oi_base&&) = default;
+
+				// Iterators:
+
+				iterator begin() {
+					return _list.begin();
+				}
+				const_iterator begin() const {
+					return _list.begin();
+				}
+				const_iterator cbegin() const {
+					return _list.cbegin();
+				}
+				iterator end() {
+					return _list.end();
+				}
+				const_iterator end() const {
+					return _list.end();
+				}
+				const_iterator cend() const {
+					return _list.cend();
+				}
+
+				reverse_iterator rbegin() {
+					return _list.rbegin();
+				}
+				const_reverse_iterator rbegin() const {
+					return _list.rbegin();
+				}
+				const_reverse_iterator crbegin() const {
+					return _list.crbegin();
+				}
+				reverse_iterator rend() {
+					return _list.rend();
+				}
+				const_reverse_iterator rend() const {
+					return _list.rend();
+				}
+				const_reverse_iterator crend() const {
+					return _list.crend();
+				}
+
+				m_iterator m_begin() {
+					return _map.begin();
+				}
+				m_const_iterator m_begin() const {
+					return _map.begin();
+				}
+				m_const_iterator m_cbegin() const {
+					return _map.cbegin();
+				}
+				m_iterator m_end() {
+					return _map.end();
+				}
+				m_const_iterator m_end() const {
+					return _map.end();
+				}
+				m_const_iterator m_cend() const {
+					return _map.end();
+				}
+
+				m_reverse_iterator m_rbegin() {
+					return _map.rbegin();
+				}
+				m_const_reverse_iterator m_rbegin() const {
+					return _map.rbegin();
+				}
+				m_const_reverse_iterator m_crbegin() const {
+					return _map.crbegin();
+				}
+				m_reverse_iterator m_rend() {
+					return _map.rend();
+				}
+				m_const_reverse_iterator m_rend() const {
+					return _map.rend();
+				}
+				m_const_reverse_iterator m_crend() const {
+					return _map.rend();
+				}
+
+				// Capacity:
+
+				bool empty() const noexcept {
+					return _map.empty();
+				}
+				size_type size() const noexcept {
+					return _map.size();
+				}
+				size_type max_size() const noexcept {
+					return _map.max_size();
+				}
+
+				// Modifiers:
+
+				typename std::conditional<_mm_type::value, std::pair<iterator, bool>, iterator>::type insert(const value_type& val);
+				template<class P>
+				typename std::conditional<_mm_type::value, std::pair<iterator, bool>, iterator>::type insert(P&& val);
+				iterator insert(const_iterator hint, const value_type& val);
+				template<class P>
+				iterator insert(const_iterator hint, P&& val);
+				template<class InputIterator>
+				void insert(InputIterator left, InputIterator right);
+				void insert(std::initializer_list<value_type> init_list);
+
+				iterator erase(const_iterator pos);
+				size_type erase(const key_type& key);
+				iterator erase(const_iterator left, const_iterator right) {
+					iterator it;
+					while(left != right)
+						it = erase(left++);
+					return it;
+				}
+
+				void swap(oi_base& other) {
+					_list.swap(other._list);
+					_map.swap(other._map);
+				}
+
+				void clear() noexcept {
+					_list.clear();
+					_map.clear();
+				}
+
+				template<class... Args>
+				typename std::conditional<_mm_type::value, std::pair<iterator, bool>, iterator>::type emplace(Args&&... args);
+				template<class... Args>
+				iterator emplace_hint(const_iterator position, Args&&... args);
+
+				// Observers:
+
+				key_compare key_comp() const {
+					return key_compare();
+				}
+				value_compare value_comp() const {
+					return value_compare(key_comp());
+				}
+
+				// Operations:
+
+				iterator find(const key_type& key) {
+					typename _map_t::iterator it_map = _map.find(key);
+					return it_map != _map.end() ? it_map->second : end();
+				}
+				const_iterator find(const key_type& key) const {
+					typename _map_t::const_iterator it_map = _map.find(key);
+					return it_map != _map.end() ? it_map->second : end();
+				}
+
+				size_type count(const key_type& key) const {
+					return _map.count(key);
+				}
+
+				// Allocator:
+
+				allocator_type get_allocator() const noexcept {
+					return allocator_type();
+				}
+		};
+
+	}
+
 	template<class Key, class Value, class Predicate = std::less<Key>, class Allocator = std::allocator<std::pair<const Key, Value>>>
-	class oi_map {
+	class oi_map : public __oi_map_details::oi_base<std::map, Key, Value, Predicate, Allocator> {
 
 		private:
 
-			using _list_t = std::list<std::pair<const Key, Value>>;
-			using _map_t  = std::map<const Key, typename _list_t::iterator, Predicate, std::allocator<std::pair<const Key, typename _list_t::iterator>>>;
-
-			_list_t _list;
-			_map_t	_map;
-
-			template<class MappedIter, class MapIterator>
-			class Iterator {
-
-				public:
-
-					using iterator_category = std::bidirectional_iterator_tag;
-					using value_type		= typename MappedIter::value_type;
-					using difference_type	= typename MappedIter::difference_type;
-					using pointer			= typename MappedIter::pointer;
-					using reference			= typename MappedIter::reference;
-
-					Iterator() {}
-					Iterator(const Iterator&) = default;
-					Iterator(Iterator&&) = default;
-
-					bool operator==(const Iterator& other) const {
-						return _iter == other._iter;
-					}
-					bool operator!=(const Iterator& other) const {
-						return !(*this == other);
-					}
-
-					Iterator& operator++() {
-						++_iter;
-						return *this;
-					}
-					Iterator operator++(int) {
-						Iterator tmp(*this);
-						++(*this);
-						return tmp;
-					}
-
-					Iterator& operator--() {
-						--_iter;
-						return *this;
-					}
-					Iterator operator--(int) {
-						Iterator tmp(*this);
-						--(*this);
-						return tmp;
-					}
-
-					reference operator*() {
-						return *(_iter->second);
-					}
-					const reference operator*() const {
-						return const_cast<Iterator&>(*this).operator*();
-					}
-
-					pointer operator->() {
-						return _iter->second.operator->();
-					}
-					const pointer operator->() const {
-						return const_cast<Iterator&>(*this).operator->();
-					}
-
-				protected:
-
-					Iterator(const MapIterator& iter) : _iter(iter) {}
-
-					MapIterator _iter;
-
-			};
+			using _list_t			= typename oi_map::_list_t;
+			using _map_t			= typename oi_map::_map_t;
 
 		public:
 
-			// Member types:
+			// Member Types
 
-			class m_const_iterator; // forward declaration
+			using key_type			= typename oi_map::key_type;
+			using mapped_type		= typename oi_map::mapped_type;
+			using value_type		= typename oi_map::value_type;
+			using size_type			= typename oi_map::size_type;
 
-			using key_type					= Key;
-			using mapped_type				= Value;
-			using value_type				= std::pair<const key_type, mapped_type>;
-			using size_type					= typename _map_t::size_type;
-			using difference_type			= typename _map_t::difference_type;
+			using iterator			= typename oi_map::iterator;
+			using const_iterator	= typename oi_map::const_iterator;
 
-			using allocator_type			= Allocator;
+			// Constructor:
 
-			using pointer					= typename Allocator::pointer;
-			using const_pointer				= typename Allocator::const_pointer;
-			using reference					= typename Allocator::reference;
-			using const_reference			= typename Allocator::const_reference;
-
-			using key_compare				= typename _map_t::key_compare;
-			using value_compare				= typename _map_t::value_compare;
-
-			using iterator					= typename _list_t::iterator;
-			using const_iterator			= typename _list_t::const_iterator;
-			using reverse_iterator			= typename _list_t::reverse_iterator;
-			using const_reverse_iterator	= typename _list_t::const_reverse_iterator;
-
-			class m_iterator : public Iterator<typename _list_t::iterator, typename _map_t::iterator> {
-				public:
-					using Iterator<typename _list_t::iterator, typename _map_t::iterator>::Iterator;
-					friend m_const_iterator;
-					friend oi_map;
-			};
-			class m_const_iterator : public Iterator<typename _list_t::const_iterator, typename _map_t::const_iterator> {
-				public:
-					using Iterator<typename _list_t::const_iterator, typename _map_t::const_iterator>::Iterator;
-					m_const_iterator(const m_iterator& other) {
-						this->_iter = other._iter;
-					}
-					friend oi_map;
-			};
-			using m_reverse_iterator		= std::reverse_iterator<m_iterator>;
-			using m_const_reverse_iterator	= std::reverse_iterator<m_const_iterator>;
-
-			// Constructors:
-
-			oi_map() {}
-			explicit oi_map(const allocator_type& alloc) {}
-
-			oi_map(const oi_map&) = default;
-			oi_map(const oi_map& other, const allocator_type& alloc) {
-				insert(other.begin(), other.end());
-			}
-
-			oi_map(oi_map&&) = default;
-			oi_map(oi_map&& other, const allocator_type& alloc) {
-				swap(other);
-			}
-
-			oi_map& operator=(const oi_map&) = default;
-			oi_map& operator=(oi_map&&) = default;
-
-			// Iterators:
-
-			iterator begin() {
-				return _list.begin();
-			}
-			const_iterator begin() const {
-				return _list.begin();
-			}
-			const_iterator cbegin() const {
-				return _list.cbegin();
-			}
-			iterator end() {
-				return _list.end();
-			}
-			const_iterator end() const {
-				return _list.end();
-			}
-			const_iterator cend() const {
-				return _list.cend();
-			}
-
-			reverse_iterator rbegin() {
-				return _list.rbegin();
-			}
-			const_reverse_iterator rbegin() const {
-				return _list.rbegin();
-			}
-			const_reverse_iterator crbegin() const {
-				return _list.crbegin();
-			}
-			reverse_iterator rend() {
-				return _list.rend();
-			}
-			const_reverse_iterator rend() const {
-				return _list.rend();
-			}
-			const_reverse_iterator crend() const {
-				return _list.crend();
-			}
-
-			m_iterator m_begin() {
-				return _map.begin();
-			}
-			m_const_iterator m_begin() const {
-				return _map.begin();
-			}
-			m_const_iterator m_cbegin() const {
-				return _map.cbegin();
-			}
-			m_iterator m_end() {
-				return _map.end();
-			}
-			m_const_iterator m_end() const {
-				return _map.end();
-			}
-			m_const_iterator m_cend() const {
-				return _map.end();
-			}
-
-			m_reverse_iterator m_rbegin() {
-				return _map.rbegin();
-			}
-			m_const_reverse_iterator m_rbegin() const {
-				return _map.rbegin();
-			}
-			m_const_reverse_iterator m_crbegin() const {
-				return _map.crbegin();
-			}
-			m_reverse_iterator m_rend() {
-				return _map.rend();
-			}
-			m_const_reverse_iterator m_rend() const {
-				return _map.rend();
-			}
-			m_const_reverse_iterator m_crend() const {
-				return _map.rend();
-			}
-
-			// Capacity:
-
-			bool empty() const noexcept {
-				return _map.empty();
-			}
-			size_type size() const noexcept {
-				return _map.size();
-			}
-			size_type max_size() const noexcept {
-				return _map.max_size();
-			}
-
+			using __oi_map_details::oi_base<std::map, Key, Value, Predicate, Allocator>::oi_base;
+		
 			// Element access:
 
-			mapped_type& operator[](const key_type& key) {
-				return (*((insert(std::make_pair(key, mapped_type()))).first)).second;
+			mapped_type& operator[](const typename oi_map::key_type& key) {
+				return (*((this->insert(std::make_pair(key, typename oi_map::mapped_type()))).first)).second;
 			}
-			mapped_type& operator[](key_type&& key) {
-				return (*((insert(std::make_pair(std::forward<key_type>(key), mapped_type()))).first)).second;
+			mapped_type& operator[](typename oi_map::key_type&& key) {
+				return (*((this->insert(std::make_pair(std::forward<typename oi_map::key_type>(key), typename oi_map::mapped_type()))).first)).second;
 			}
 
 			mapped_type& at(const key_type& key) {
-				return _map.at(key)->second;
+				return this->_map.at(key)->second;
 			}
 			const mapped_type& at(const key_type& key) const {
-				return _map.at(key)->second;
+				return this->_map.at(key)->second;
 			}
 
 			// Modifiers:
 
 			std::pair<iterator, bool> insert(const value_type& val) {
-				typename _map_t::iterator it_key = _map.find(val.first);
-				if(it_key != _map.end()) {
+				typename _map_t::iterator it_key = this->_map.find(val.first);
+				if(it_key != this->_map.end()) {
 					return std::pair<iterator, bool>(it_key->second, false);
 				}
-				_list.push_back(val);
-				iterator it_list = --_list.end();
-				_map.emplace_hint(it_key, it_list->first, it_list);
+				this->_list.push_back(val);
+				iterator it_list = --this->_list.end();
+				this->_map.emplace_hint(it_key, it_list->first, it_list);
 				return std::pair<iterator, bool>(it_list, true);
 			}
 			template<class P>
 			std::pair<iterator, bool> insert(P&& val) {
-				typename _map_t::iterator it_key = _map.find(val.first);
-				if(it_key != _map.end()) {
+				typename _map_t::iterator it_key = this->_map.find(val.first);
+				if(it_key != this->_map.end()) {
 					return std::pair<iterator, bool>(it_key->second, false);
 				}
-				_list.push_back(std::forward<P>(val));
-				iterator it_list = --_list.end();
-				_map.emplace_hint(it_key, it_list->first, it_list);
+				this->_list.push_back(std::forward<P>(val));
+				iterator it_list = --this->_list.end();
+				this->_map.emplace_hint(it_key, it_list->first, it_list);
 				return std::pair<iterator, bool>(it_list, true);
 			}
 			iterator insert(const_iterator hint, const value_type& val) {
@@ -315,34 +450,19 @@ namespace neo {
 				insert(init_list.begin(), init_list.end());
 			}
 
+			using __oi_map_details::oi_base<std::map, Key, Value, Predicate, Allocator>::erase;
 			iterator erase(const_iterator pos) {
-				_map.erase(pos->first);
-				return _list.erase(pos);
+				this->_map.erase(pos->first);
+				return this->_list.erase(pos);
 			}
 			size_type erase(const key_type& key) {
-				typename _map_t::const_iterator it = _map.find(key);
-				if(it != _map.end()) {
-					_list.erase(it->second);
-					_map.erase(it);
+				typename _map_t::const_iterator it = this->_map.find(key);
+				if(it != this->_map.end()) {
+					this->_list.erase(it->second);
+					this->_map.erase(it);
 					return 1;
 				}
 				return 0;
-			}
-			iterator erase(const_iterator left, const_iterator right) {
-				iterator it;
-				while(left != right)
-					it = erase(left++);
-				return it;
-			}
-
-			void swap(oi_map& other) {
-				_list.swap(other._list);
-				_map.swap(other._map);
-			}
-
-			void clear() noexcept {
-				_list.clear();
-				_map.clear();
 			}
 
 			template<class... Args>
@@ -350,60 +470,146 @@ namespace neo {
 				return insert(std::pair<Args...>(std::forward<Args>(args)...));
 			}
 			template<class... Args>
-			iterator emplace_hint(const_iterator position, Args&&... args) {
+			iterator emplace_hint(const_iterator hint, Args&&... args) {
 				return insert(std::pair<Args...>(std::forward<Args>(args)...)).first;
-			}
-
-			// Observers:
-
-			key_compare key_comp() const {
-				return key_compare();
-			}
-			value_compare value_comp() const {
-				return value_compare(key_comp());
 			}
 
 			// Operations:
 
-			iterator find(const key_type& key) {
-				typename _map_t::iterator it_map = _map.find(key);
-				return it_map != _map.end() ? it_map->second : end();
-			}
-			const_iterator find(const key_type& key) const {
-				typename _map_t::const_iterator it_map = _map.find(key);
-				return it_map != _map.end() ? it_map->second : end();
-			}
-
-			size_type count(const key_type& key) const {
-				return _map.count(key);
-			}
-
 			iterator lower_bound(const key_type& key) {
-				return _map.lower_bound(key)->second;
+				return this->_map.lower_bound(key)->second;
 			}
 			const_iterator lower_bound(const key_type& key) const {
-				return _map.lower_bound(key)->second;
+				return this->_map.lower_bound(key)->second;
 			}
 			iterator upper_bound(const key_type& key) {
-				return _map.upper_bound(key)->second;
+				return this->_map.upper_bound(key)->second;
 			}
 			const_iterator upper_bound(const key_type& key) const {
-				return _map.upper_bound(key)->second;
+				return this->_map.upper_bound(key)->second;
 			}
 
 			std::pair<iterator, iterator> equal_range(const key_type& key) {
-				std::pair<typename _map_t::iterator, typename _map_t::iterator> ret = _map.equal_range(key);
+				std::pair<typename _map_t::iterator, typename _map_t::iterator> ret = this->_map.equal_range(key);
 				return std::pair<iterator, iterator>(ret.first->second, ret.second->second);
 			}
 			std::pair<const_iterator, const_iterator> equal_range(const key_type& key) const {
-				std::pair<typename _map_t::const_iterator, typename _map_t::const_iterator> ret = _map.equal_range(key);
+				std::pair<typename _map_t::const_iterator, typename _map_t::const_iterator> ret = this->_map.equal_range(key);
 				return std::pair<const_iterator, const_iterator>(ret.first->second, ret.second->second);
 			}
 
-			// Allocator:
+	};
 
-			allocator_type get_allocator() const noexcept {
-				return allocator_type();
+	template<class Key, class Value, class Predicate = std::less<Key>, class Allocator = std::allocator<std::pair<const Key, Value>>>
+	class oi_multimap : public __oi_map_details::oi_base<std::multimap, Key, Value, Predicate, Allocator> {
+
+		private:
+
+			using _list_t			= typename oi_multimap::_list_t;
+			using _map_t			= typename oi_multimap::_map_t;
+
+		public:
+
+			// Member Types
+
+			using key_type			= typename oi_multimap::key_type;
+			using mapped_type		= typename oi_multimap::mapped_type;
+			using value_type		= typename oi_multimap::value_type;
+			using size_type			= typename oi_multimap::size_type;
+
+			using iterator			= typename oi_multimap::iterator;
+			using const_iterator	= typename oi_multimap::const_iterator;
+			using m_iterator		= typename oi_multimap::m_iterator;
+			using m_const_iterator	= typename oi_multimap::m_const_iterator;
+
+			// Constructor:
+
+			using __oi_map_details::oi_base<std::multimap, Key, Value, Predicate, Allocator>::oi_base;
+
+			// Modifiers:
+
+			iterator insert(const value_type& val) {
+				this->_list.push_back(val);
+				iterator it_list = --this->_list.end();
+				this->_map.emplace(it_list->first, it_list);
+				return it_list;
+			}
+			template<class P>
+			iterator insert(P&& val) {
+				this->_list.push_back(std::forward<P>(val));
+				iterator it_list = --this->_list.end();
+				this->_map.emplace(it_list->first, it_list);
+				return it_list;
+			}
+			iterator insert(const_iterator hint, const value_type& val) {
+				return insert(val);
+			}
+			template<class P>
+			iterator insert(const_iterator hint, P&& val) {
+				return insert(std::forward<P>(val));
+			}
+			template<class InputIterator>
+			void insert(InputIterator left, InputIterator right) {
+				for(; left != right; ++left)
+					insert(*left);
+			}
+			void insert(std::initializer_list<value_type> init_list) {
+				insert(init_list.begin(), init_list.end());
+			}
+
+			using __oi_map_details::oi_base<std::multimap, Key, Value, Predicate, Allocator>::erase;
+			iterator erase(const_iterator pos) {
+				std::pair<typename _map_t::iterator, typename _map_t::iterator> eq = this->_map.equal_range(pos->first);
+				for(typename _map_t::iterator it = eq.first; it != eq.second; ++it) { // cannot use erase(pos->first) like oi_map since it would delete all the keys
+					if(it->second == pos) {
+						this->_map.erase(it);
+						break;
+					}
+				}
+				return this->_list.erase(pos);
+			}
+			size_type erase(const key_type& key) {
+				std::pair<typename _map_t::const_iterator, typename _map_t::const_iterator> range = this->_map.equal_range(key);
+				size_type count = 0;
+				for(typename _map_t::const_iterator it = range.first; it != range.second; ++it) {
+					this->_list.erase(it->second);
+					++count;
+				}
+				this->_map.erase(range.first, range.second);
+				return count;
+			}
+
+			template<class... Args>
+			iterator emplace(Args&&... args) {
+				return insert(std::pair<Args...>(std::forward<Args>(args)...));
+			}
+			template<class... Args>
+			iterator emplace_hint(const_iterator hint, Args&&... args) {
+				return insert(std::pair<Args...>(std::forward<Args>(args)...));
+			}
+
+			// Operations:
+
+			m_iterator lower_bound(const key_type& key) {
+				return this->_map.lower_bound(key);
+			}
+			m_const_iterator lower_bound(const key_type& key) const {
+				return this->_map.lower_bound(key);
+			}
+			m_iterator upper_bound(const key_type& key) {
+				return this->_map.upper_bound(key);
+			}
+			m_const_iterator upper_bound(const key_type& key) const {
+				return this->_map.upper_bound(key);
+			}
+
+			std::pair<m_iterator, m_iterator> equal_range(const key_type& key) {
+				std::pair<typename _map_t::iterator, typename _map_t::iterator> ret = this->_map.equal_range(key);
+				return std::pair<m_iterator, m_iterator>(ret.first, ret.second);
+			}
+			std::pair<m_const_iterator, m_const_iterator> equal_range(const key_type& key) const {
+				std::pair<typename _map_t::const_iterator, typename _map_t::const_iterator> ret = this->_map.equal_range(key);
+				return std::pair<m_const_iterator, m_const_iterator>(ret.first, ret.second);
 			}
 
 	};
