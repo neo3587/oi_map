@@ -15,7 +15,7 @@
 		- Requires C++11 or higher
 		- m_iterators follows the predicate order instead of the insertion order (just like a normal std::map)
 		- m_iterators are convertible to iterators, but not vice versa
-		- oi_multimap uses m_iterators for lower_bound(), upper_bound() and equal_range(), oi_iterators cannot work properly with these functions
+		- oi_multimap uses m_iterators for lower_bound(), upper_bound() and equal_range(), iterators that follows the insertion order cannot work properly with these functions
 		- emplace_hint is just there for compatibility, it won't speed up the insertions
 
 	TODO:
@@ -27,6 +27,7 @@
 
 
 #include <map>
+#include <unordered_map>
 #include <list>
 #include <initializer_list>
 
@@ -106,8 +107,7 @@ namespace neo {
 		class oi_base {
 
 			protected:
-
-				using _mm_type	= std::is_same<Map<Key, Value, Predicate, Allocator>, std::map<Key, Value, Predicate, Allocator>>;
+				
 				using _list_t	= std::list<std::pair<const Key, Value>>;
 				using _map_t	= Map<const Key, typename _list_t::iterator, Predicate, std::allocator<std::pair<const Key, typename _list_t::iterator>>>;
 
@@ -134,7 +134,7 @@ namespace neo {
 				using key_compare				= typename _map_t::key_compare;
 				using value_compare				= typename _map_t::value_compare;
 
-				//class iterator;
+				class iterator;
 				class const_iterator;
 				class m_iterator;
 				class m_const_iterator;
@@ -201,6 +201,7 @@ namespace neo {
 				// Constructors:
 
 				oi_base() {}
+				explicit oi_base(const key_compare& comp, const allocator_type& alloc = allocator_type()) {}
 				explicit oi_base(const allocator_type& alloc) {}
 
 				oi_base(const oi_base&) = default;
@@ -214,79 +215,79 @@ namespace neo {
 
 				// Iterators:
 
-				iterator begin() {
+				iterator begin() noexcept {
 					return _list.begin();
 				}
-				const_iterator begin() const {
+				const_iterator begin() const noexcept {
 					return _list.begin();
 				}
-				const_iterator cbegin() const {
+				const_iterator cbegin() const noexcept {
 					return _list.cbegin();
 				}
-				iterator end() {
+				iterator end() noexcept {
 					return _list.end();
 				}
-				const_iterator end() const {
+				const_iterator end() const noexcept {
 					return _list.end();
 				}
-				const_iterator cend() const {
+				const_iterator cend() const noexcept {
 					return _list.cend();
 				}
 
-				reverse_iterator rbegin() {
+				reverse_iterator rbegin() noexcept {
 					return _list.rbegin();
 				}
-				const_reverse_iterator rbegin() const {
+				const_reverse_iterator rbegin() const noexcept {
 					return _list.rbegin();
 				}
-				const_reverse_iterator crbegin() const {
+				const_reverse_iterator crbegin() const noexcept {
 					return _list.crbegin();
 				}
-				reverse_iterator rend() {
+				reverse_iterator rend() noexcept {
 					return _list.rend();
 				}
-				const_reverse_iterator rend() const {
+				const_reverse_iterator rend() const noexcept {
 					return _list.rend();
 				}
-				const_reverse_iterator crend() const {
+				const_reverse_iterator crend() const noexcept {
 					return _list.crend();
 				}
 
-				m_iterator m_begin() {
+				m_iterator m_begin() noexcept {
 					return _map.begin();
 				}
-				m_const_iterator m_begin() const {
+				m_const_iterator m_begin() const noexcept {
 					return _map.begin();
 				}
-				m_const_iterator m_cbegin() const {
+				m_const_iterator m_cbegin() const noexcept {
 					return _map.cbegin();
 				}
-				m_iterator m_end() {
+				m_iterator m_end() noexcept {
 					return _map.end();
 				}
-				m_const_iterator m_end() const {
+				m_const_iterator m_end() const noexcept {
 					return _map.end();
 				}
-				m_const_iterator m_cend() const {
+				m_const_iterator m_cend() const noexcept {
 					return _map.end();
 				}
 
-				m_reverse_iterator m_rbegin() {
+				m_reverse_iterator m_rbegin() noexcept {
 					return _map.rbegin();
 				}
-				m_const_reverse_iterator m_rbegin() const {
+				m_const_reverse_iterator m_rbegin() const noexcept {
 					return _map.rbegin();
 				}
-				m_const_reverse_iterator m_crbegin() const {
+				m_const_reverse_iterator m_crbegin() const noexcept {
 					return _map.crbegin();
 				}
-				m_reverse_iterator m_rend() {
+				m_reverse_iterator m_rend() noexcept {
 					return _map.rend();
 				}
-				m_const_reverse_iterator m_rend() const {
+				m_const_reverse_iterator m_rend() const noexcept {
 					return _map.rend();
 				}
-				m_const_reverse_iterator m_crend() const {
+				m_const_reverse_iterator m_crend() const noexcept {
 					return _map.rend();
 				}
 
@@ -303,26 +304,7 @@ namespace neo {
 				}
 
 				// Modifiers:
-
-				typename std::conditional<_mm_type::value, std::pair<iterator, bool>, iterator>::type insert(const value_type& val);
-				template<class P>
-				typename std::conditional<_mm_type::value, std::pair<iterator, bool>, iterator>::type insert(P&& val);
-				iterator insert(const_iterator hint, const value_type& val);
-				template<class P>
-				iterator insert(const_iterator hint, P&& val);
-				template<class InputIterator>
-				void insert(InputIterator left, InputIterator right);
-				void insert(std::initializer_list<value_type> init_list);
-
-				iterator erase(const_iterator pos);
-				size_type erase(const key_type& key);
-				iterator erase(const_iterator left, const_iterator right) {
-					iterator it;
-					while(left != right)
-						it = erase(left++);
-					return it;
-				}
-
+				
 				void swap(oi_base& other) {
 					_list.swap(other._list);
 					_map.swap(other._map);
@@ -332,11 +314,6 @@ namespace neo {
 					_list.clear();
 					_map.clear();
 				}
-
-				template<class... Args>
-				typename std::conditional<_mm_type::value, std::pair<iterator, bool>, iterator>::type emplace(Args&&... args);
-				template<class... Args>
-				iterator emplace_hint(const_iterator position, Args&&... args);
 
 				// Observers:
 
@@ -391,10 +368,21 @@ namespace neo {
 			using iterator			= typename oi_map::iterator;
 			using const_iterator	= typename oi_map::const_iterator;
 
+			using key_compare		= typename oi_map::key_compare;
+			using allocator_type	= typename oi_map::allocator_type;
+
 			// Constructor:
 
 			using __oi_map_details::oi_base<std::map, Key, Value, Predicate, Allocator>::oi_base;
-		
+			oi_map() {} // GCC complains w/o this
+			template<class InputIterator>
+			oi_map(InputIterator left, InputIterator right, const key_compare& comp = key_compare(), const allocator_type& alloc = allocator_type()) {
+				insert(left, right);
+			}
+			oi_map(std::initializer_list<value_type> il, const key_compare& comp = key_compare(), const allocator_type& alloc = allocator_type()) {
+				insert(il);
+			}
+
 			// Element access:
 
 			mapped_type& operator[](const typename oi_map::key_type& key) {
@@ -450,7 +438,6 @@ namespace neo {
 				insert(init_list.begin(), init_list.end());
 			}
 
-			using __oi_map_details::oi_base<std::map, Key, Value, Predicate, Allocator>::erase;
 			iterator erase(const_iterator pos) {
 				this->_map.erase(pos->first);
 				return this->_list.erase(pos);
@@ -463,6 +450,12 @@ namespace neo {
 					return 1;
 				}
 				return 0;
+			}
+			iterator erase(const_iterator left, const_iterator right) {
+				iterator it;
+				while(left != right)
+					it = erase(left++);
+				return it;
 			}
 
 			template<class... Args>
@@ -522,9 +515,20 @@ namespace neo {
 			using m_iterator		= typename oi_multimap::m_iterator;
 			using m_const_iterator	= typename oi_multimap::m_const_iterator;
 
+			using key_compare		= typename oi_multimap::key_compare;
+			using allocator_type	= typename oi_multimap::allocator_type;
+
 			// Constructor:
 
 			using __oi_map_details::oi_base<std::multimap, Key, Value, Predicate, Allocator>::oi_base;
+			oi_multimap() {} // GCC complains w/o this
+			template<class InputIterator>
+			oi_multimap(InputIterator left, InputIterator right, const key_compare& comp = key_compare(), const allocator_type& alloc = allocator_type()) {
+				insert(left, right);
+			}
+			oi_multimap(std::initializer_list<value_type> il, const key_compare& comp = key_compare(), const allocator_type& alloc = allocator_type()) {
+				insert(il);
+			}
 
 			// Modifiers:
 
@@ -557,7 +561,6 @@ namespace neo {
 				insert(init_list.begin(), init_list.end());
 			}
 
-			using __oi_map_details::oi_base<std::multimap, Key, Value, Predicate, Allocator>::erase;
 			iterator erase(const_iterator pos) {
 				std::pair<typename _map_t::iterator, typename _map_t::iterator> eq = this->_map.equal_range(pos->first);
 				for(typename _map_t::iterator it = eq.first; it != eq.second; ++it) { // cannot use erase(pos->first) like oi_map since it would delete all the keys
@@ -577,6 +580,12 @@ namespace neo {
 				}
 				this->_map.erase(range.first, range.second);
 				return count;
+			}
+			iterator erase(const_iterator left, const_iterator right) {
+				iterator it;
+				while(left != right)
+					it = erase(left++);
+				return it;
 			}
 
 			template<class... Args>
