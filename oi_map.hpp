@@ -21,8 +21,7 @@
 		- emplace_hint is just there for compatibility, it won't speed up the insertions
 
 	TODO:
-		- oi_unordered_map
-		- oi_unordered_multimap
+		- local_iterators
 
 */
 
@@ -38,6 +37,8 @@
 namespace neo {
 
 	namespace __oi_map_details {
+
+		// Inheritance order : oi_base -> oi_single/oi_multi -> oi_ordered/oi_unordered
 
 		template<class MappedIter, class MapIterator>
 		class oi_iterator {
@@ -118,7 +119,7 @@ namespace neo {
 
 			public:
 
-				// Member types:
+				// Member Types:
 
 				using key_type					= Key;
 				using mapped_type				= Value;
@@ -132,9 +133,6 @@ namespace neo {
 				using const_pointer				= typename Allocator::const_pointer;
 				using reference					= typename Allocator::reference;
 				using const_reference			= typename Allocator::const_reference;
-
-				using key_compare				= typename _map_t::key_compare;
-				using value_compare				= typename _map_t::value_compare;
 
 				class iterator;
 				class const_iterator;
@@ -174,8 +172,6 @@ namespace neo {
 						const_iterator(const typename _list_t::const_iterator& other) : _list_t::const_iterator(other) {}
 						const_iterator(typename _list_t::const_iterator&& other) : _list_t::const_iterator(other) {}
 				};
-				using reverse_iterator			= std::reverse_iterator<iterator>;
-				using const_reverse_iterator	= std::reverse_iterator<const_iterator>;
 
 				class m_iterator : public oi_iterator<iterator, typename _map_t::iterator> {
 					public:
@@ -203,7 +199,6 @@ namespace neo {
 				// Constructors:
 
 				oi_base() {}
-				explicit oi_base(const key_compare& comp, const allocator_type& alloc = allocator_type()) : _map(comp), _list(alloc) {}
 				explicit oi_base(const allocator_type& alloc) : _list(alloc) {}
 
 				oi_base(const oi_base&) = default;
@@ -238,25 +233,6 @@ namespace neo {
 				}
 				const_iterator cend() const noexcept {
 					return _list.cend();
-				}
-
-				reverse_iterator rbegin() noexcept {
-					return _list.rbegin();
-				}
-				const_reverse_iterator rbegin() const noexcept {
-					return _list.rbegin();
-				}
-				const_reverse_iterator crbegin() const noexcept {
-					return _list.crbegin();
-				}
-				reverse_iterator rend() noexcept {
-					return _list.rend();
-				}
-				const_reverse_iterator rend() const noexcept {
-					return _list.rend();
-				}
-				const_reverse_iterator crend() const noexcept {
-					return _list.crend();
 				}
 
 				m_iterator m_begin() noexcept {
@@ -321,15 +297,6 @@ namespace neo {
 					_map.clear();
 				}
 
-				// Observers:
-
-				key_compare key_comp() const {
-					return key_compare();
-				}
-				value_compare value_comp() const {
-					return value_compare(key_comp());
-				}
-
 				// Operations:
 
 				iterator find(const key_type& key) {
@@ -350,10 +317,16 @@ namespace neo {
 				allocator_type get_allocator() const noexcept {
 					return allocator_type();
 				}
+
+			protected:
+
+				template<class... Args>
+				oi_base(const allocator_type& alloc, const Args&... args) : _list(alloc), _map(args...) {}
+
 		};
 
 		template<class Key, class Value, class Allocator, class Map>
-		class oi_single : public virtual oi_base<Key, Value, Allocator, Map> {
+		class oi_single : public oi_base<Key, Value, Allocator, Map> {
 
 			protected:
 
@@ -362,7 +335,7 @@ namespace neo {
 
 			public:
 
-				// Member Types
+				// Member Types:
 
 				using key_type			= typename oi_single::key_type;
 				using mapped_type		= typename oi_single::mapped_type;
@@ -372,22 +345,9 @@ namespace neo {
 				using iterator			= typename oi_single::iterator;
 				using const_iterator	= typename oi_single::const_iterator;
 
-				using key_compare		= typename oi_single::key_compare;
 				using allocator_type	= typename oi_single::allocator_type;
 
-				// Constructor:
-
-				using oi_base<Key, Value, Allocator, _map_t>::oi_base;
-				oi_single() {} // GCC complains w/o this
-				template<class InputIterator>
-				oi_single(InputIterator left, InputIterator right, const key_compare& comp = key_compare(), const allocator_type& alloc = allocator_type()) : oi_base<Key, Value, Allocator, _map_t>(comp, alloc) {
-					insert(left, right);
-				}
-				oi_single(std::initializer_list<value_type> il, const key_compare& comp = key_compare(), const allocator_type& alloc = allocator_type()) : oi_base<Key, Value, Allocator, _map_t>(comp, alloc) {
-					insert(il);
-				}
-
-				// Element access:
+				// Element Access:
 
 				mapped_type& operator[](const key_type& key) {
 					return (*((this->insert(std::make_pair(key, mapped_type()))).first)).second;
@@ -473,19 +433,6 @@ namespace neo {
 
 				// Operations:
 
-				iterator lower_bound(const key_type& key) {
-					return this->_map.lower_bound(key)->second;
-				}
-				const_iterator lower_bound(const key_type& key) const {
-					return this->_map.lower_bound(key)->second;
-				}
-				iterator upper_bound(const key_type& key) {
-					return this->_map.upper_bound(key)->second;
-				}
-				const_iterator upper_bound(const key_type& key) const {
-					return this->_map.upper_bound(key)->second;
-				}
-
 				std::pair<iterator, iterator> equal_range(const key_type& key) {
 					std::pair<typename _map_t::iterator, typename _map_t::iterator> ret = this->_map.equal_range(key);
 					return std::pair<iterator, iterator>(ret.first->second, ret.second->second);
@@ -498,7 +445,7 @@ namespace neo {
 		};
 
 		template<class Key, class Value, class Allocator, class Map>
-		class oi_multi : public virtual oi_base<Key, Value, Allocator, Map> {
+		class oi_multi : public oi_base<Key, Value, Allocator, Map> {
 
 			protected:
 
@@ -519,20 +466,11 @@ namespace neo {
 				using m_iterator		= typename oi_multi::m_iterator;
 				using m_const_iterator	= typename oi_multi::m_const_iterator;
 
-				using key_compare		= typename oi_multi::key_compare;
 				using allocator_type	= typename oi_multi::allocator_type;
 
-				// Constructor:
+				// Constructors:
 
-				using oi_base<Key, Value, Allocator, _map_t>::oi_base;
-				oi_multi() {} // GCC complains w/o this
-				template<class InputIterator>
-				oi_multi(InputIterator left, InputIterator right, const key_compare& comp = key_compare(), const allocator_type& alloc = allocator_type()) : oi_base<Key, Value, Allocator, _map_t>(comp, alloc) {
-					insert(left, right);
-				}
-				oi_multi(std::initializer_list<value_type> il, const key_compare& comp = key_compare(), const allocator_type& alloc = allocator_type()) : oi_base<Key, Value, Allocator, _map_t>(comp, alloc) {
-					insert(il);
-				}
+				using oi_base<Key, Value, Allocator, Map>::oi_base;
 
 				// Modifiers:
 
@@ -603,19 +541,6 @@ namespace neo {
 
 				// Operations:
 
-				m_iterator lower_bound(const key_type& key) {
-					return this->_map.lower_bound(key);
-				}
-				m_const_iterator lower_bound(const key_type& key) const {
-					return this->_map.lower_bound(key);
-				}
-				m_iterator upper_bound(const key_type& key) {
-					return this->_map.upper_bound(key);
-				}
-				m_const_iterator upper_bound(const key_type& key) const {
-					return this->_map.upper_bound(key);
-				}
-
 				std::pair<m_iterator, m_iterator> equal_range(const key_type& key) {
 					std::pair<typename _map_t::iterator, typename _map_t::iterator> ret = this->_map.equal_range(key);
 					return std::pair<m_iterator, m_iterator>(ret.first, ret.second);
@@ -627,49 +552,219 @@ namespace neo {
 
 		};
 
-		template<class Key, class Value, class Allocator, class Map>
-		class oi_ordered : public virtual oi_base<Key, Value, Allocator, Map> {
+		template<class Key, class Value, class Allocator, template<class...> class MBase, class Map>
+		class oi_ordered : public MBase<Key, Value, Allocator, Map> {
+
+			protected:
+
+				using _map_t					= typename oi_ordered::_map_t;
+
+			public:
+
+				// Member Types:
+
+				using value_type				= typename oi_ordered::value_type;
+
+				using iterator					= typename oi_ordered::iterator;
+				using const_iterator			= typename oi_ordered::const_iterator;
+				using reverse_iterator			= std::reverse_iterator<iterator>;
+				using const_reverse_iterator	= std::reverse_iterator<const_iterator>;
+
+				using allocator_type			= typename oi_ordered::allocator_type;
+
+				using key_compare				= typename _map_t::key_compare;
+				using value_compare				= typename _map_t::value_compare;
+
+				// Constructors:
+
+				using MBase<Key, Value, Allocator, _map_t>::MBase;
+				oi_ordered() {} // GCC complains w/o this
+				explicit oi_ordered(const key_compare& comp, const allocator_type& alloc = allocator_type()) : MBase<Key, Value, Allocator, _map_t>(alloc, comp) {}
+				template<class InputIterator>
+				oi_ordered(InputIterator left, InputIterator right, const key_compare& comp = key_compare(), const allocator_type& alloc = allocator_type()) :oi_ordered(comp, alloc) {
+					this->insert(left, right);
+				}
+				template<class InputIterator>
+				oi_ordered(InputIterator left, InputIterator right, const allocator_type& alloc) : oi_ordered(left, right, key_compare(), alloc) {}
+				oi_ordered(std::initializer_list<value_type> il, const key_compare& comp = key_compare(), const allocator_type& alloc = allocator_type()) : oi_ordered(comp, alloc) {
+					this->insert(il);
+				}
+				oi_ordered(std::initializer_list<value_type> il, const allocator_type& alloc) : oi_ordered(il, key_compare(), alloc) {}
+
+				// Iterators:
+
+				reverse_iterator rbegin() noexcept {
+					return this->_list.rbegin();
+				}
+				const_reverse_iterator rbegin() const noexcept {
+					return this->_list.rbegin();
+				}
+				const_reverse_iterator crbegin() const noexcept {
+					return this->_list.crbegin();
+				}
+				reverse_iterator rend() noexcept {
+					return this->_list.rend();
+				}
+				const_reverse_iterator rend() const noexcept {
+					return this->_list.rend();
+				}
+				const_reverse_iterator crend() const noexcept {
+					return this->_list.crend();
+				}
+
+				// Observers:
+
+				key_compare key_comp() const {
+					return key_compare();
+				}
+				value_compare value_comp() const {
+					return value_compare(key_comp());
+				}
 
 		};
 
-		template<class Key, class Value, class Allocator, class Map>
-		class oi_unordered : public virtual oi_base<Key, Value, Allocator, Map> {
+		template<class Key, class Value, class Allocator, template<class...> class MBase, class Map>
+		class oi_unordered : public oi_base<Key, Value, Allocator, Map> {
+
+			protected:
+
+				using _map_t					= typename oi_unordered::_map_t;
+
+			public:
+
+				// Member Types:
+
+				using key_type					= typename oi_unordered::key_type;
+				using value_type				= typename oi_unordered::value_type;
+				using size_type					= typename oi_unordered::size_type;
+
+				using allocator_type			= typename oi_unordered::allocator_type;
+
+				using hasher					= typename _map_t::hasher;
+				using key_equal					= typename _map_t::key_equal;
+
+				// Constructors:
+
+				using MBase<Key, Value, Allocator, _map_t>::MBase;
+				oi_unordered() {} // GCC complains w/o this
+				explicit oi_unordered(size_type n, const hasher& hf = hasher(), const key_equal& eql = key_equal(), const allocator_type& alloc = allocator_type()) : MBase<Key, Value, Allocator, _map_t>(alloc, n, hf, eql) {}
+				explicit oi_unordered(const allocator_type& alloc) : MBase<Key, Value, Allocator, Map>(alloc) {}
+				oi_unordered(size_type n, const allocator_type& alloc) : oi_unordered(n, hasher(), key_equal(), alloc) {}
+				oi_unordered(size_type n, const hasher& hf, const allocator_type& alloc) : oi_unordered(n, hf, key_equal(), alloc) {}
+				template<class InputIterator>
+				oi_unordered(InputIterator left, InputIterator right) {
+					this->insert(left, right);
+				}
+				template<class InputIterator>
+				oi_unordered(InputIterator left, InputIterator right, size_type n, const hasher& hf = hasher(), const key_equal& eql = key_equal(), const allocator_type& alloc = allocator_type()) : oi_unordered(n, hf, eql, alloc) {
+					this->insert(left, right);
+				}
+				template <class InputIterator>
+				oi_unordered(InputIterator left, InputIterator right, size_type n, const allocator_type& alloc) : oi_unordered(left, right, n, hasher(), key_equal(), alloc()) {}
+				template <class InputIterator>
+				oi_unordered(InputIterator left, InputIterator right, size_type n, const hasher& hf, const allocator_type& alloc) : oi_unordered(left, right, n, hf, key_equal(), alloc) {}
+				oi_unordered(std::initializer_list<value_type> il) {
+					this->insert(il);
+				}
+				oi_unordered(std::initializer_list<value_type> il, size_type n, const hasher& hf = hasher(), const key_equal& eql = key_equal(), const allocator_type& alloc = allocator_type()) : oi_unordered(n, hf, eql, alloc) {
+					this->insert(il);
+				}
+				oi_unordered(std::initializer_list<value_type> il, size_type n, const allocator_type& alloc) : oi_unordered(il, n, hasher(), key_equal(), alloc) {}
+				oi_unordered(std::initializer_list<value_type> il, size_type n, const hasher& hf, const allocator_type& alloc) : oi_unordered(il, n, hf, key_equal(), alloc) {}
+
+				// Buckets:
+
+				size_type bucket_count() const noexcept {
+					return this->_map.bucket_count();
+				}
+				size_type max_bucket_count() const noexcept {
+					return this->_map.max_bucket_count();
+				}
+				size_type bucket_size(size_type n) const {
+					return this->_map.bucket_size(n);
+				}
+				size_type bucket(const key_type& key) const {
+					return this->_map.bucket(key);
+				}
+
+				// Hash Policy:
+
+				float load_factor() const noexcept {
+					return this->_map.load_factor();
+				}
+				float max_load_factor() const noexcept {
+					return this->_map.max_load_factor();
+				}
+				void max_load_factor(float f) {
+					this->_map.max_load_factor(f);
+				}
+				void rehash(size_type n) {
+					this->_map.rehash(n);
+				}
+				void reserve(size_type n) {
+					this->_map.reserve(n);
+				}
+
+				// Observers:
+
+				hasher hash_function() const {
+					return hasher();
+				}
+				key_equal key_eq() const {
+					return key_equal();
+				}
 
 		};
 
 	}
 
 	template<class Key, class Value, class Predicate = std::less<Key>, class Allocator = std::allocator<std::pair<const Key, Value>>>
-	class oi_map : public __oi_map_details::oi_ordered<Key, Value, Allocator, std::map<Key, typename std::list<std::pair<const Key, Value>>::iterator, Predicate>>,
-				   public __oi_map_details::oi_single<Key, Value, Allocator, std::map<Key, typename std::list<std::pair<const Key, Value>>::iterator, Predicate>> {
+	class oi_map : public  __oi_map_details::oi_ordered<Key, Value, Allocator, __oi_map_details::oi_single, std::map<Key, typename std::list<std::pair<const Key, Value>>::iterator, Predicate>> {
 		public:
-			using __oi_map_details::oi_ordered<Key, Value, Allocator, std::map<Key, typename std::list<std::pair<const Key, Value>>::iterator, Predicate>>::oi_ordered;
-			using __oi_map_details::oi_single<Key, Value, Allocator, std::map<Key, typename std::list<std::pair<const Key, Value>>::iterator, Predicate>>::oi_single;
+			using __oi_map_details::oi_ordered<Key, Value, Allocator, __oi_map_details::oi_single, typename oi_map::_map_t>::oi_ordered;
+			typename oi_map::iterator lower_bound(const typename oi_map::key_type& key) {
+				return this->_map.lower_bound(key)->second;
+			}
+			typename oi_map::const_iterator lower_bound(const typename oi_map::key_type& key) const {
+				return this->_map.lower_bound(key)->second;
+			}
+			typename oi_map::iterator upper_bound(const typename oi_map::key_type& key) {
+				return this->_map.upper_bound(key)->second;
+			}
+			typename oi_map::const_iterator upper_bound(const typename oi_map::key_type& key) const {
+				return this->_map.upper_bound(key)->second;
+			}
 	};
 
 	template<class Key, class Value, class Predicate = std::less<Key>, class Allocator = std::allocator<std::pair<const Key, Value>>>
-	class oi_multimap : public __oi_map_details::oi_ordered<Key, Value, Allocator, std::multimap<Key, typename std::list<std::pair<const Key, Value>>::iterator, Predicate>>,
-						public __oi_map_details::oi_multi<Key, Value, Allocator, std::multimap<Key, typename std::list<std::pair<const Key, Value>>::iterator, Predicate>> {
+	class oi_multimap : public __oi_map_details::oi_ordered<Key, Value, Allocator, __oi_map_details::oi_multi, std::multimap<Key, typename std::list<std::pair<const Key, Value>>::iterator, Predicate>> {
 		public:
-			using __oi_map_details::oi_ordered<Key, Value, Allocator, std::multimap<Key, typename std::list<std::pair<const Key, Value>>::iterator, Predicate>>::oi_ordered;
-			using __oi_map_details::oi_multi<Key, Value, Allocator, std::multimap<Key, typename std::list<std::pair<const Key, Value>>::iterator, Predicate>>::oi_multi;
+			using __oi_map_details::oi_ordered<Key, Value, Allocator, __oi_map_details::oi_multi, typename oi_multimap::_map_t>::oi_ordered;
+			typename oi_multimap::m_iterator lower_bound(const typename oi_multimap::key_type& key) {
+				return this->_map.lower_bound(key);
+			}
+			typename oi_multimap::m_const_iterator lower_bound(const typename oi_multimap::key_type& key) const {
+				return this->_map.lower_bound(key);
+			}
+			typename oi_multimap::m_iterator upper_bound(const typename oi_multimap::key_type& key) {
+				return this->_map.upper_bound(key);
+			}
+			typename oi_multimap::m_const_iterator upper_bound(const typename oi_multimap::key_type& key) const {
+				return this->_map.upper_bound(key);
+			}
 	};
 
 	/*
 	template<class Key, class Value, class Hash = std::hash<Key>, class Predicate = std::equal_to<Key>, class Allocator = std::allocator<std::pair<const Key, Value>>>
-	class oi_unordered_map : public __oi_map_details::oi_unordered<Key, Value, Allocator, std::unordered_map<Key, typename std::list<std::pair<const Key, Value>>::iterator, Hash, Predicate>>,
-							 public __oi_map_details::oi_single<Key, Value, Allocator, std::unordered_map<Key, typename std::list<std::pair<const Key, Value>>::iterator, Hash, Predicate>> {
+	class oi_unordered_map : public __oi_map_details::oi_unordered<Key, Value, Allocator, __oi_map_details::oi_single, std::unordered_map<Key, typename std::list<std::pair<const Key, Value>>::iterator, Hash, Predicate>> {
 		public:
-			using __oi_map_details::oi_unordered<Key, Value, Allocator, std::unordered_map<Key, typename std::list<std::pair<const Key, Value>>::iterator, Hash, Predicate>>::oi_unordered;
-			using __oi_map_details::oi_single<Key, Value, Allocator, std::unordered_map<Key, typename std::list<std::pair<const Key, Value>>::iterator, Hash, Predicate>>::oi_single;
+			using __oi_map_details::oi_unordered<Key, Value, Allocator, __oi_map_details::oi_single, typename oi_unordered_map::_map_t>::oi_unordered;
 	};
 
 	template<class Key, class Value, class Hash = std::hash<Key>, class Predicate = std::equal_to<Key>, class Allocator = std::allocator<std::pair<const Key, Value>>>
-	class oi_unordered_multimap : public __oi_map_details::oi_unordered<Key, Value, Allocator, std::unordered_multimap<Key, typename std::list<std::pair<const Key, Value>>::iterator, Hash, Predicate>>,
-								  public __oi_map_details::oi_multi<Key, Value, Allocator, std::unordered_multimap<Key, typename std::list<std::pair<const Key, Value>>::iterator, Hash, Predicate>> {
+	class oi_unordered_multimap : __oi_map_details::oi_unordered<Key, Value, Allocator, __oi_map_details::oi_multi, std::unordered_multimap<Key, typename std::list<std::pair<const Key, Value>>::iterator, Hash, Predicate>> {
 		public:
-			using __oi_map_details::oi_unordered<Key, Value, Allocator, std::unordered_multimap<Key, typename std::list<std::pair<const Key, Value>>::iterator, Hash, Predicate>>::oi_unordered;
-			using __oi_map_details::oi_multi<Key, Value, Allocator, std::unordered_multimap<Key, typename std::list<std::pair<const Key, Value>>::iterator, Hash, Predicate>>::oi_multi;
+			using __oi_map_details::oi_unordered<Key, Value, Allocator, __oi_map_details::oi_multi, typename oi_unordered_multimap::_map_t>::oi_unordered;
 	};
 	*/
 
