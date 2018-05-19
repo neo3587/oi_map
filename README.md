@@ -1,6 +1,6 @@
 # oi_map
 oi_map (ordered insertion map) is a container class that emulates a std::map but using the insertion order when iterating, in addition, it provides a secondary iterator (called m_iterator) to use the predicate order.
-
+Also includes an implementation for std::multimap, std::unordered_map and std::unordered_multimap.
 
 # Example
 ```c++
