@@ -552,8 +552,8 @@ namespace neo {
 
 		};
 
-		template<class Key, class Value, class Allocator, template<class...> class MBase, class Map>
-		class oi_ordered : public MBase<Key, Value, Allocator, Map> {
+		template<class Key, class Value, class Allocator, class MBase, class Map>
+		class oi_ordered : public MBase {
 
 			protected:
 
@@ -577,9 +577,9 @@ namespace neo {
 
 				// Constructors:
 
-				using MBase<Key, Value, Allocator, _map_t>::MBase;
+				using MBase::MBase;
 				oi_ordered() {} // GCC complains w/o this
-				explicit oi_ordered(const key_compare& comp, const allocator_type& alloc = allocator_type()) : MBase<Key, Value, Allocator, _map_t>(alloc, comp) {}
+				explicit oi_ordered(const key_compare& comp, const allocator_type& alloc = allocator_type()) : MBase(alloc, comp) {}
 				template<class InputIterator>
 				oi_ordered(InputIterator left, InputIterator right, const key_compare& comp = key_compare(), const allocator_type& alloc = allocator_type()) :oi_ordered(comp, alloc) {
 					this->insert(left, right);
@@ -623,12 +623,17 @@ namespace neo {
 
 		};
 
-		template<class Key, class Value, class Allocator, template<class...> class MBase, class Map>
-		class oi_unordered : public oi_base<Key, Value, Allocator, Map> {
+		template<class Key, class Value, class Allocator, class MBase, class Map>
+		class oi_unordered : public MBase {
 
 			protected:
 
 				using _map_t					= typename oi_unordered::_map_t;
+
+				template<class MappedIter>
+				class LocalIterator {
+
+				};
 
 			public:
 
@@ -645,10 +650,10 @@ namespace neo {
 
 				// Constructors:
 
-				using MBase<Key, Value, Allocator, _map_t>::MBase;
+				using MBase::MBase;
 				oi_unordered() {} // GCC complains w/o this
-				explicit oi_unordered(size_type n, const hasher& hf = hasher(), const key_equal& eql = key_equal(), const allocator_type& alloc = allocator_type()) : MBase<Key, Value, Allocator, _map_t>(alloc, n, hf, eql) {}
-				explicit oi_unordered(const allocator_type& alloc) : MBase<Key, Value, Allocator, Map>(alloc) {}
+				explicit oi_unordered(size_type n, const hasher& hf = hasher(), const key_equal& eql = key_equal(), const allocator_type& alloc = allocator_type()) : MBase(alloc, n, hf, eql) {}
+				explicit oi_unordered(const allocator_type& alloc) : MBase(alloc) {}
 				oi_unordered(size_type n, const allocator_type& alloc) : oi_unordered(n, hasher(), key_equal(), alloc) {}
 				oi_unordered(size_type n, const hasher& hf, const allocator_type& alloc) : oi_unordered(n, hf, key_equal(), alloc) {}
 				template<class InputIterator>
@@ -716,12 +721,15 @@ namespace neo {
 
 		};
 
+		template<class Key, class Value, class Allocator, template<class...> class OiOrder, template<class...> class OiType, template<class...> class STL, class... Preds>
+		using oi_map_gen = OiOrder<Key, Value, Allocator, OiType<Key, Value, Allocator, STL<Key, typename std::list<std::pair<const Key, Value>>::iterator, Preds...>>, STL<Key, typename std::list<std::pair<const Key, Value>>::iterator, Preds...>>;
+
 	}
 
 	template<class Key, class Value, class Predicate = std::less<Key>, class Allocator = std::allocator<std::pair<const Key, Value>>>
-	class oi_map : public  __oi_map_details::oi_ordered<Key, Value, Allocator, __oi_map_details::oi_single, std::map<Key, typename std::list<std::pair<const Key, Value>>::iterator, Predicate>> {
+	class oi_map : public __oi_map_details::oi_map_gen<Key, Value, Allocator, __oi_map_details::oi_ordered, __oi_map_details::oi_single, std::map, Predicate> {
 		public:
-			using __oi_map_details::oi_ordered<Key, Value, Allocator, __oi_map_details::oi_single, typename oi_map::_map_t>::oi_ordered;
+			using __oi_map_details::oi_map_gen<Key, Value, Allocator, __oi_map_details::oi_ordered, __oi_map_details::oi_single, std::map, Predicate>::oi_ordered;
 			typename oi_map::iterator lower_bound(const typename oi_map::key_type& key) {
 				return this->_map.lower_bound(key)->second;
 			}
@@ -737,9 +745,9 @@ namespace neo {
 	};
 
 	template<class Key, class Value, class Predicate = std::less<Key>, class Allocator = std::allocator<std::pair<const Key, Value>>>
-	class oi_multimap : public __oi_map_details::oi_ordered<Key, Value, Allocator, __oi_map_details::oi_multi, std::multimap<Key, typename std::list<std::pair<const Key, Value>>::iterator, Predicate>> {
+	class oi_multimap : public __oi_map_details::oi_map_gen<Key, Value, Allocator, __oi_map_details::oi_ordered, __oi_map_details::oi_multi, std::multimap, Predicate> {
 		public:
-			using __oi_map_details::oi_ordered<Key, Value, Allocator, __oi_map_details::oi_multi, typename oi_multimap::_map_t>::oi_ordered;
+			using __oi_map_details::oi_map_gen<Key, Value, Allocator, __oi_map_details::oi_ordered, __oi_map_details::oi_multi, std::multimap, Predicate>::oi_ordered;
 			typename oi_multimap::m_iterator lower_bound(const typename oi_multimap::key_type& key) {
 				return this->_map.lower_bound(key);
 			}
@@ -767,7 +775,6 @@ namespace neo {
 			using __oi_map_details::oi_unordered<Key, Value, Allocator, __oi_map_details::oi_multi, typename oi_unordered_multimap::_map_t>::oi_unordered;
 	};
 	*/
-
 }
 
 
