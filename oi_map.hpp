@@ -188,7 +188,7 @@ namespace neo {
 							this->_iter = other._iter;
 						}
 						m_const_iterator(m_iterator&& other) {
-							this->_iter = other._iter;
+							this->_iter = std::forward<m_iterator>(other._iter);
 						}
 						friend const_iterator;
 						friend oi_base;
@@ -628,25 +628,39 @@ namespace neo {
 
 			protected:
 
-				using _map_t					= typename oi_unordered::_map_t;
-
-				template<class MappedIter>
-				class LocalIterator {
-
-				};
+				using _map_t			= typename oi_unordered::_map_t;
 
 			public:
 
 				// Member Types:
 
-				using key_type					= typename oi_unordered::key_type;
-				using value_type				= typename oi_unordered::value_type;
-				using size_type					= typename oi_unordered::size_type;
+				using key_type			= typename oi_unordered::key_type;
+				using value_type		= typename oi_unordered::value_type;
+				using size_type			= typename oi_unordered::size_type;
 
-				using allocator_type			= typename oi_unordered::allocator_type;
+				using allocator_type	= typename oi_unordered::allocator_type;
 
-				using hasher					= typename _map_t::hasher;
-				using key_equal					= typename _map_t::key_equal;
+				using hasher			= typename _map_t::hasher;
+				using key_equal			= typename _map_t::key_equal;
+
+				class local_iterator;
+				class const_local_iterator;
+
+				class local_iterator : public oi_iterator<typename oi_unordered::iterator, typename _map_t::local_iterator> {
+					public:
+						using oi_iterator<typename oi_unordered::iterator, typename _map_t::local_iterator>::oi_iterator;
+						friend const_local_iterator;
+				};
+				class const_local_iterator : public oi_iterator<typename oi_unordered::const_iterator, typename _map_t::const_local_iterator> {
+					public:
+						using oi_iterator<typename oi_unordered::const_iterator, typename _map_t::const_local_iterator>::oi_iterator;
+						const_local_iterator(const local_iterator& other) {
+							this->_iter = other._iter;
+						}
+						const_local_iterator(local_iterator&& other) {
+							this->_iter = std::forward<local_iterator>(other._iter);
+						}
+				};
 
 				// Constructors:
 
@@ -676,6 +690,27 @@ namespace neo {
 				}
 				oi_unordered(std::initializer_list<value_type> il, size_type n, const allocator_type& alloc) : oi_unordered(il, n, hasher(), key_equal(), alloc) {}
 				oi_unordered(std::initializer_list<value_type> il, size_type n, const hasher& hf, const allocator_type& alloc) : oi_unordered(il, n, hf, key_equal(), alloc) {}
+
+				// Iterators:
+
+				local_iterator begin(size_type n) {
+					return this->_map.begin(n);
+				}
+				const_local_iterator begin(size_type n) const {
+					return this->_map.begin(n);
+				}
+				const_local_iterator cbegin(size_type n) const {
+					return this->_map.cbegin(n);
+				}
+				local_iterator end(size_type n) {
+					return this->_map.end(n);
+				}
+				const_local_iterator end(size_type n) const {
+					return this->_map.end(n);
+				}
+				const_local_iterator cend(size_type n) const {
+					return this->_map.cend(n);
+				}
 
 				// Buckets:
 
@@ -762,19 +797,18 @@ namespace neo {
 			}
 	};
 
-	/*
 	template<class Key, class Value, class Hash = std::hash<Key>, class Predicate = std::equal_to<Key>, class Allocator = std::allocator<std::pair<const Key, Value>>>
-	class oi_unordered_map : public __oi_map_details::oi_unordered<Key, Value, Allocator, __oi_map_details::oi_single, std::unordered_map<Key, typename std::list<std::pair<const Key, Value>>::iterator, Hash, Predicate>> {
+	class oi_unordered_map : public __oi_map_details::oi_map_gen<Key, Value, Allocator, __oi_map_details::oi_unordered, __oi_map_details::oi_single, std::unordered_map, Hash, Predicate> {
 		public:
-			using __oi_map_details::oi_unordered<Key, Value, Allocator, __oi_map_details::oi_single, typename oi_unordered_map::_map_t>::oi_unordered;
+			using __oi_map_details::oi_map_gen<Key, Value, Allocator, __oi_map_details::oi_unordered, __oi_map_details::oi_single, std::unordered_map, Hash, Predicate>::oi_unordered;
 	};
 
 	template<class Key, class Value, class Hash = std::hash<Key>, class Predicate = std::equal_to<Key>, class Allocator = std::allocator<std::pair<const Key, Value>>>
-	class oi_unordered_multimap : __oi_map_details::oi_unordered<Key, Value, Allocator, __oi_map_details::oi_multi, std::unordered_multimap<Key, typename std::list<std::pair<const Key, Value>>::iterator, Hash, Predicate>> {
+	class oi_unordered_multimap : public __oi_map_details::oi_map_gen<Key, Value, Allocator, __oi_map_details::oi_unordered, __oi_map_details::oi_multi, std::unordered_multimap, Hash, Predicate> {
 		public:
-			using __oi_map_details::oi_unordered<Key, Value, Allocator, __oi_map_details::oi_multi, typename oi_unordered_multimap::_map_t>::oi_unordered;
+			using __oi_map_details::oi_map_gen<Key, Value, Allocator, __oi_map_details::oi_unordered, __oi_map_details::oi_multi, std::unordered_multimap, Hash, Predicate>::oi_unordered;
 	};
-	*/
+	
 }
 
 
