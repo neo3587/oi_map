@@ -20,9 +20,6 @@
 		- oi_multimap uses m_iterators for lower_bound(), upper_bound() and equal_range(), iterators that follows the insertion order cannot work properly with these functions
 		- emplace_hint is just there for compatibility, it won't speed up the insertions
 
-	TODO:
-		- local_iterators
-
 */
 
 
@@ -179,7 +176,6 @@ namespace neo {
 						friend iterator;
 						friend const_iterator;
 						friend m_const_iterator;
-						friend oi_base;
 				};
 				class m_const_iterator : public oi_iterator<const_iterator, typename _map_t::const_iterator> {
 					public:
@@ -191,7 +187,6 @@ namespace neo {
 							this->_iter = std::forward<m_iterator>(other._iter);
 						}
 						friend const_iterator;
-						friend oi_base;
 				};
 				using m_reverse_iterator		= std::reverse_iterator<m_iterator>;
 				using m_const_reverse_iterator	= std::reverse_iterator<m_const_iterator>;
@@ -375,7 +370,7 @@ namespace neo {
 					this->_map.emplace_hint(it_key, it_list->first, it_list);
 					return std::pair<iterator, bool>(it_list, true);
 				}
-				template<class P>
+				template<typename P, typename = typename std::enable_if<std::is_constructible<value_type, P&&>::value>::type>
 				std::pair<iterator, bool> insert(P&& val) {
 					typename _map_t::iterator it_key = this->_map.find(val.first);
 					if(it_key != this->_map.end()) {
@@ -389,7 +384,7 @@ namespace neo {
 				iterator insert(const_iterator hint, const value_type& val) {
 					return insert(val).first;
 				}
-				template<class P>
+				template<typename P, typename = typename std::enable_if<std::is_constructible<value_type, P&&>::value>::type>
 				iterator insert(const_iterator hint, P&& val) {
 					return insert(std::forward<P>(val)).first;
 				}
@@ -480,7 +475,7 @@ namespace neo {
 					this->_map.emplace(it_list->first, it_list);
 					return it_list;
 				}
-				template<class P>
+				template<typename P, typename = typename std::enable_if<std::is_constructible<value_type, P&&>::value>::type>
 				iterator insert(P&& val) {
 					this->_list.push_back(std::forward<P>(val));
 					iterator it_list = --this->_list.end();
@@ -490,7 +485,7 @@ namespace neo {
 				iterator insert(const_iterator hint, const value_type& val) {
 					return insert(val);
 				}
-				template<class P>
+				template<typename P, typename = typename std::enable_if<std::is_constructible<value_type, P&&>::value>::type>
 				iterator insert(const_iterator hint, P&& val) {
 					return insert(std::forward<P>(val));
 				}
