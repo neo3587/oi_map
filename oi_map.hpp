@@ -37,16 +37,16 @@ namespace neo {
 
 		// Inheritance order : oi_base -> oi_single/oi_multi -> oi_ordered/oi_unordered
 
-		template<class MappedIter, class MapIterator>
+		template<class MapIterator>
 		class oi_iterator {
 
 			public:
 
 				using iterator_category = std::bidirectional_iterator_tag;
-				using value_type		= typename MappedIter::value_type;
-				using difference_type	= typename MappedIter::difference_type;
-				using pointer			= typename MappedIter::pointer;
-				using reference			= typename MappedIter::reference;
+				using value_type		= typename MapIterator::value_type::second_type::value_type;
+				using difference_type	= typename MapIterator::value_type::second_type::difference_type;
+				using pointer			= typename MapIterator::value_type::second_type::pointer;
+				using reference			= typename MapIterator::value_type::second_type::reference;
 
 				oi_iterator() {}
 				oi_iterator(const oi_iterator&) = default;
@@ -170,16 +170,16 @@ namespace neo {
 						const_iterator(typename _list_t::const_iterator&& other) : _list_t::const_iterator(other) {}
 				};
 
-				class m_iterator : public oi_iterator<iterator, typename _map_t::iterator> {
+				class m_iterator : public oi_iterator<typename _map_t::iterator> {
 					public:
-						using oi_iterator<iterator, typename _map_t::iterator>::oi_iterator;
+						using oi_iterator<typename _map_t::iterator>::oi_iterator;
 						friend iterator;
 						friend const_iterator;
 						friend m_const_iterator;
 				};
-				class m_const_iterator : public oi_iterator<const_iterator, typename _map_t::const_iterator> {
+				class m_const_iterator : public oi_iterator<typename _map_t::const_iterator> {
 					public:
-						using oi_iterator<const_iterator, typename _map_t::const_iterator>::oi_iterator;
+						using oi_iterator<typename _map_t::const_iterator>::oi_iterator;
 						m_const_iterator(const m_iterator& other) {
 							this->_iter = other._iter;
 						}
@@ -208,6 +208,10 @@ namespace neo {
 
 				oi_base& operator=(const oi_base&) = default;
 				oi_base& operator=(oi_base&&) = default;
+				oi_base& operator=(std::initializer_list<value_type> il) {
+					insert(il);
+					return *this;
+				}
 
 				// Iterators:
 
@@ -311,6 +315,15 @@ namespace neo {
 
 				allocator_type get_allocator() const noexcept {
 					return allocator_type();
+				}
+
+				// Extra:
+
+				void splice(const_iterator position, const_iterator element) {
+					_list.splice(position, _list, element);
+				}
+				void splice(const_iterator position, const_iterator left, const_iterator right) {
+					_list.splice(position, _list, left, right);
 				}
 
 			protected:
@@ -641,14 +654,14 @@ namespace neo {
 				class local_iterator;
 				class const_local_iterator;
 
-				class local_iterator : public oi_iterator<typename oi_unordered::iterator, typename _map_t::local_iterator> {
+				class local_iterator : public oi_iterator<typename _map_t::local_iterator> {
 					public:
-						using oi_iterator<typename oi_unordered::iterator, typename _map_t::local_iterator>::oi_iterator;
+						using oi_iterator<typename _map_t::local_iterator>::oi_iterator;
 						friend const_local_iterator;
 				};
-				class const_local_iterator : public oi_iterator<typename oi_unordered::const_iterator, typename _map_t::const_local_iterator> {
+				class const_local_iterator : public oi_iterator<typename _map_t::const_local_iterator> {
 					public:
-						using oi_iterator<typename oi_unordered::const_iterator, typename _map_t::const_local_iterator>::oi_iterator;
+						using oi_iterator<typename _map_t::const_local_iterator>::oi_iterator;
 						const_local_iterator(const local_iterator& other) {
 							this->_iter = other._iter;
 						}
