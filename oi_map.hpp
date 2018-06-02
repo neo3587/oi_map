@@ -37,7 +37,7 @@ namespace neo {
 
 		// Inheritance order : oi_base -> oi_single/oi_multi -> oi_ordered/oi_unordered
 
-		template<class MapIterator>
+		template<class MapIterator, class IterChild>
 		class oi_iterator {
 
 			public:
@@ -63,22 +63,22 @@ namespace neo {
 					return !(*this == other);
 				}
 
-				oi_iterator& operator++() {
+				IterChild& operator++() {
 					++_iter;
-					return *this;
+					return static_cast<IterChild&>(*this);
 				}
-				oi_iterator operator++(int) {
-					oi_iterator tmp(*this);
+				IterChild operator++(int) {
+					IterChild tmp(*this);
 					++(*this);
 					return tmp;
 				}
 
-				oi_iterator& operator--() {
+				IterChild& operator--() {
 					--_iter;
-					return *this;
+					return static_cast<IterChild&>(*this);
 				}
-				oi_iterator operator--(int) {
-					oi_iterator tmp(*this);
+				IterChild operator--(int) {
+					IterChild tmp(*this);
 					--(*this);
 					return tmp;
 				}
@@ -138,55 +138,219 @@ namespace neo {
 
 				class iterator : public _list_t::iterator {
 					public:
+						using _list_t::iterator::iterator;
+						using _list_t::iterator::operator=;
+						using _list_t::iterator::operator==;
+						using _list_t::iterator::operator!=;
 						iterator() {}
-						iterator(const iterator&) = default;
-						iterator(iterator&&) = default;
-						iterator& operator=(const iterator&) = default;
-						iterator& operator=(iterator&&) = default;
 						
 						iterator(const m_iterator& other) : _list_t::iterator(other._iter->second) {}
 						iterator(m_iterator&& other) : _list_t::iterator(std::forward<m_iterator>(other)._iter->second) {}
+						iterator& operator=(const m_iterator& other) {
+							*this = other._iter->second;
+							return *this;
+						}
+						iterator& operator=(m_iterator&& other) {
+							*this = std::forward<m_iterator>(other)._iter->second;
+							return *this;
+						}
 
 						iterator(const typename _list_t::iterator& other) : _list_t::iterator(other) {}
 						iterator(typename _list_t::iterator&& other) : _list_t::iterator(other) {}
+
+						iterator& operator++() {
+							return static_cast<iterator&>(_list_t::iterator::operator++());
+						}
+						iterator operator++(int) {
+							iterator tmp(*this);
+							++(*this);
+							return tmp;
+						}
+						iterator& operator--() {
+							return static_cast<iterator&>(_list_t::iterator::operator--());
+						}
+						iterator operator--(int) {
+							iterator tmp(*this);
+							--(*this);
+							return tmp;
+						}
+
+						bool operator==(const iterator& other) const {
+							return static_cast<const const_iterator&>(*this) == static_cast<const const_iterator&>(other);
+						}
+						bool operator!=(const iterator& other) const {
+							return !(*this == other);
+						}
+						bool operator==(const const_iterator& other) const {
+							return static_cast<const const_iterator&>(*this) == static_cast<const const_iterator&>(other);
+						}
+						bool operator!=(const const_iterator& other) const {
+							return !(*this == other);
+						}
+						bool operator==(const m_iterator& other) const {
+							return static_cast<const const_iterator&>(*this) == static_cast<const const_iterator&>(other);
+						}
+						bool operator!=(const m_iterator& other) const {
+							return !(*this == other);
+						}
+						bool operator==(const m_const_iterator& other) const {
+							return static_cast<const const_iterator&>(*this) == static_cast<const const_iterator&>(other);
+						}
+						bool operator!=(const m_const_iterator& other) const {
+							return !(*this == other);
+						}
+
 				};
 				class const_iterator : public _list_t::const_iterator {
 					public:
+						using _list_t::const_iterator::const_iterator;
+						using _list_t::const_iterator::operator=;
+						using _list_t::const_iterator::operator==;
+						using _list_t::const_iterator::operator!=;
 						const_iterator() {}
-						const_iterator(const const_iterator&) = default;
-						const_iterator(const_iterator&&) = default;
-						const_iterator& operator=(const const_iterator&) = default;
-						const_iterator& operator=(const_iterator&&) = default;
 
 						const_iterator(const iterator& other) : _list_t::const_iterator(other) {}
 						const_iterator(iterator&& other) : _list_t::const_iterator(std::forward<iterator>(other)) {}
+						const_iterator& operator=(const iterator& other) {
+							*this = static_cast<const const_iterator&>(other);
+							return *this;
+						}
+						const_iterator& operator=(iterator&& other) {
+							*this = static_cast<const_iterator&&>(std::forward<iterator>(other));
+							return *this;
+						}
 
 						const_iterator(const m_iterator& other) : _list_t::const_iterator(other._iter->second) {}
 						const_iterator(m_iterator&& other) : _list_t::const_iterator(std::forward<m_iterator>(other)._iter->second) {}
+						const_iterator& operator=(const m_iterator& other) {
+							*this = static_cast<const const_iterator&>(other);
+							return *this;
+						}
+						const_iterator& operator=(m_iterator&& other) {
+							*this = static_cast<const_iterator&&>(std::forward<m_iterator>(other));
+							return *this;
+						}
+
 						const_iterator(const m_const_iterator& other) : _list_t::const_iterator(other._iter->second) {}
 						const_iterator(m_const_iterator&& other) : _list_t::const_iterator(std::forward<m_const_iterator>(other)._iter->second) {}
+						const_iterator& operator=(const m_const_iterator& other) {
+							*this = static_cast<const const_iterator&>(other);
+							return *this;
+						}
+						const_iterator& operator=(m_const_iterator&& other) {
+							*this = static_cast<const_iterator&&>(std::forward<m_const_iterator>(other));
+							return *this;
+						}
 
 						const_iterator(const typename _list_t::const_iterator& other) : _list_t::const_iterator(other) {}
 						const_iterator(typename _list_t::const_iterator&& other) : _list_t::const_iterator(other) {}
+
+						const_iterator& operator++() {
+							return static_cast<const_iterator&>(_list_t::const_iterator::operator++());
+						}
+						const_iterator operator++(int) {
+							const_iterator tmp(*this);
+							++(*this);
+							return tmp;
+						}
+						const_iterator& operator--() {
+							return static_cast<const_iterator&>(_list_t::const_iterator::operator--());
+						}
+						const_iterator operator--(int) {
+							const_iterator tmp(*this);
+							--(*this);
+							return tmp;
+						}
+
+						bool operator==(const iterator& other) const {
+							return static_cast<const const_iterator&>(*this) == static_cast<const const_iterator&>(other);
+						}
+						bool operator!=(const iterator& other) const {
+							return !(*this == other);
+						}
+						bool operator==(const m_iterator& other) const {
+							return static_cast<const const_iterator&>(*this) == static_cast<const const_iterator&>(other);
+						}
+						bool operator!=(const m_iterator& other) const {
+							return !(*this == other);
+						}
+						bool operator==(const m_const_iterator& other) const {
+							return static_cast<const const_iterator&>(*this) == static_cast<const const_iterator&>(other);
+						}
+						bool operator!=(const m_const_iterator& other) const {
+							return !(*this == other);
+						}
+
 				};
 
-				class m_iterator : public oi_iterator<typename _map_t::iterator> {
+				class m_iterator : public oi_iterator<typename _map_t::iterator, m_iterator> {
 					public:
-						using oi_iterator<typename _map_t::iterator>::oi_iterator;
+						using oi_iterator<typename _map_t::iterator, m_iterator>::oi_iterator;
+						using oi_iterator<typename _map_t::iterator, m_iterator>::operator==;
+						using oi_iterator<typename _map_t::iterator, m_iterator>::operator!=;
 						friend iterator;
 						friend const_iterator;
 						friend m_const_iterator;
+
+						bool operator==(const iterator& other) const {
+							return static_cast<const const_iterator&>(*this) == static_cast<const const_iterator&>(other);
+						}
+						bool operator!=(const iterator& other) const {
+							return !(*this == other);
+						}
+						bool operator==(const const_iterator& other) const {
+							return static_cast<const const_iterator&>(*this) == static_cast<const const_iterator&>(other);
+						}
+						bool operator!=(const const_iterator& other) const {
+							return !(*this == other);
+						}
+						bool operator==(const m_const_iterator& other) const {
+							return static_cast<const const_iterator&>(*this) == static_cast<const const_iterator&>(other);
+						}
+						bool operator!=(const m_const_iterator& other) const {
+							return !(*this == other);
+						}
 				};
-				class m_const_iterator : public oi_iterator<typename _map_t::const_iterator> {
+				class m_const_iterator : public oi_iterator<typename _map_t::const_iterator, m_const_iterator> {
 					public:
-						using oi_iterator<typename _map_t::const_iterator>::oi_iterator;
+						using oi_iterator<typename _map_t::const_iterator, m_const_iterator>::oi_iterator;
+						using oi_iterator<typename _map_t::const_iterator, m_const_iterator>::operator=;
+						using oi_iterator<typename _map_t::const_iterator, m_const_iterator>::operator==;
+						using oi_iterator<typename _map_t::const_iterator, m_const_iterator>::operator!=;
 						m_const_iterator(const m_iterator& other) {
 							this->_iter = other._iter;
 						}
 						m_const_iterator(m_iterator&& other) {
-							this->_iter = std::forward<m_iterator>(other._iter);
+							this->_iter = std::forward<m_iterator>(other)._iter;
+						}
+						m_const_iterator& operator=(const m_iterator& other) {
+							*this = static_cast<const m_const_iterator&>(other);
+							return *this;
+						}
+						m_const_iterator& operator=(m_iterator&& other) {
+							*this = static_cast<m_const_iterator&&>(std::forward<m_iterator>(other));
+							return *this;
 						}
 						friend const_iterator;
+
+						bool operator==(const iterator& other) const {
+							return static_cast<const const_iterator&>(*this) == static_cast<const const_iterator&>(other);
+						}
+						bool operator!=(const iterator& other) const {
+							return !(*this == other);
+						}
+						bool operator==(const const_iterator& other) const {
+							return static_cast<const const_iterator&>(*this) == static_cast<const const_iterator&>(other);
+						}
+						bool operator!=(const const_iterator& other) const {
+							return !(*this == other);
+						}
+						bool operator==(const m_iterator& other) const {
+							return static_cast<const const_iterator&>(*this) == static_cast<const const_iterator&>(other);
+						}
+						bool operator!=(const m_iterator& other) const {
+							return !(*this == other);
+						}
 				};
 				using m_reverse_iterator		= std::reverse_iterator<m_iterator>;
 				using m_const_reverse_iterator	= std::reverse_iterator<m_const_iterator>;
@@ -197,14 +361,10 @@ namespace neo {
 				explicit oi_base(const allocator_type& alloc) : _list(alloc) {}
 
 				oi_base(const oi_base&) = default;
-				oi_base(const oi_base& other, const allocator_type& alloc) : _list(alloc) {
-					*this = other;
-				}
+				oi_base(const oi_base& other, const allocator_type& alloc) : _list(alloc), oi_base(other) {}
 
 				oi_base(oi_base&&) = default;
-				oi_base(oi_base&& other, const allocator_type& alloc) : _list(alloc) {
-					*this = std::forward<oi_base>(other);
-				}
+				oi_base(oi_base&& other, const allocator_type& alloc) : _list(alloc), oi_base(std::forward<oi_base>(other)) {}
 
 				oi_base& operator=(const oi_base&) = default;
 				oi_base& operator=(oi_base&&) = default;
@@ -329,7 +489,7 @@ namespace neo {
 			protected:
 
 				template<class... Args>
-				oi_base(const allocator_type& alloc, const Args&... args) : _list(alloc), _map(args...) {}
+				oi_base(const allocator_type& alloc, Args&&... args) : _list(alloc), _map(args...) {}
 
 		};
 
@@ -354,6 +514,10 @@ namespace neo {
 				using const_iterator	= typename oi_single::const_iterator;
 
 				using allocator_type	= typename oi_single::allocator_type;
+
+				// Constructors:
+
+				using oi_base<Key, Value, Allocator, Map>::oi_base;
 
 				// Element Access:
 
@@ -654,19 +818,46 @@ namespace neo {
 				class local_iterator;
 				class const_local_iterator;
 
-				class local_iterator : public oi_iterator<typename _map_t::local_iterator> {
+				class local_iterator : public oi_iterator<typename _map_t::local_iterator, local_iterator> {
 					public:
-						using oi_iterator<typename _map_t::local_iterator>::oi_iterator;
+						using oi_iterator<typename _map_t::local_iterator, local_iterator>::oi_iterator;
+						using oi_iterator<typename _map_t::local_iterator, local_iterator>::operator==;
+						using oi_iterator<typename _map_t::local_iterator, local_iterator>::operator!=;
 						friend const_local_iterator;
+
+						bool operator==(const const_local_iterator& other) const {
+							return static_cast<const const_local_iterator&>(*this) == static_cast<const const_local_iterator&>(other);
+						}
+						bool operator!=(const const_local_iterator& other) const {
+							return !(*this == other);
+						}
 				};
-				class const_local_iterator : public oi_iterator<typename _map_t::const_local_iterator> {
+				class const_local_iterator : public oi_iterator<typename _map_t::const_local_iterator, const_local_iterator> {
 					public:
-						using oi_iterator<typename _map_t::const_local_iterator>::oi_iterator;
+						using oi_iterator<typename _map_t::const_local_iterator, const_local_iterator>::oi_iterator;
+						using oi_iterator<typename _map_t::const_local_iterator, const_local_iterator>::operator=;
+						using oi_iterator<typename _map_t::const_local_iterator, const_local_iterator>::operator!=;
+						using oi_iterator<typename _map_t::const_local_iterator, const_local_iterator>::operator==;
 						const_local_iterator(const local_iterator& other) {
 							this->_iter = other._iter;
 						}
 						const_local_iterator(local_iterator&& other) {
 							this->_iter = std::forward<local_iterator>(other._iter);
+						}
+						const_local_iterator& operator=(const local_iterator& other) {
+							*this = static_cast<const const_local_iterator&>(other);
+							return *this;
+						}
+						const_local_iterator& operator=(local_iterator&& other) {
+							*this = static_cast<const_local_iterator&&>(std::forward<local_iterator>(other));
+							return *this;
+						}
+
+						bool operator==(const local_iterator& other) const {
+							return static_cast<const const_local_iterator&>(*this) == static_cast<const const_local_iterator&>(other);
+						}
+						bool operator!=(const local_iterator& other) const {
+							return !(*this == other);
 						}
 				};
 
@@ -700,6 +891,11 @@ namespace neo {
 				oi_unordered(std::initializer_list<value_type> il, size_type n, const hasher& hf, const allocator_type& alloc) : oi_unordered(il, n, hf, key_equal(), alloc) {}
 
 				// Iterators:
+
+				using MBase::begin;
+				using MBase::cbegin;
+				using MBase::end;
+				using MBase::cend;
 
 				local_iterator begin(size_type n) {
 					return this->_map.begin(n);
