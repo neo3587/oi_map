@@ -98,7 +98,7 @@ namespace neo {
 				}
 
 			protected:
-		
+
 				MapIterator _iter;
 
 		};
@@ -107,7 +107,7 @@ namespace neo {
 		class oi_base {
 
 			protected:
-				
+
 				using _list_t = std::list<std::pair<const Key, Value>>;
 				using _map_t  = Map;
 
@@ -143,7 +143,7 @@ namespace neo {
 						using _list_t::iterator::operator==;
 						using _list_t::iterator::operator!=;
 						iterator() {}
-						
+
 						iterator(const m_iterator& other) : _list_t::iterator(other._iter->second) {}
 						iterator(m_iterator&& other) : _list_t::iterator(std::forward<m_iterator>(other)._iter->second) {}
 						iterator& operator=(const m_iterator& other) {
@@ -317,6 +317,7 @@ namespace neo {
 						using oi_iterator<typename _map_t::const_iterator, m_const_iterator>::operator=;
 						using oi_iterator<typename _map_t::const_iterator, m_const_iterator>::operator==;
 						using oi_iterator<typename _map_t::const_iterator, m_const_iterator>::operator!=;
+						m_const_iterator() {}
 						m_const_iterator(const m_iterator& other) {
 							this->_iter = other._iter;
 						}
@@ -361,17 +362,17 @@ namespace neo {
 				explicit oi_base(const allocator_type& alloc) : _list(alloc) {}
 
 				oi_base(const oi_base&) = default;
-				oi_base(const oi_base& other, const allocator_type& alloc) : _list(alloc), oi_base(other) {}
+				oi_base(const oi_base& other, const allocator_type& alloc) : _list(alloc) {
+				    *this = other;
+                }
 
 				oi_base(oi_base&&) = default;
-				oi_base(oi_base&& other, const allocator_type& alloc) : _list(alloc), oi_base(std::forward<oi_base>(other)) {}
+				oi_base(oi_base&& other, const allocator_type& alloc) : _list(alloc) {
+                    *this = std::forward<oi_base>(other);
+				}
 
 				oi_base& operator=(const oi_base&) = default;
 				oi_base& operator=(oi_base&&) = default;
-				oi_base& operator=(std::initializer_list<value_type> il) {
-					insert(il);
-					return *this;
-				}
 
 				// Iterators:
 
@@ -445,7 +446,7 @@ namespace neo {
 				}
 
 				// Modifiers:
-				
+
 				void swap(oi_base& other) {
 					_list.swap(other._list);
 					_map.swap(other._map);
@@ -518,6 +519,11 @@ namespace neo {
 				// Constructors:
 
 				using oi_base<Key, Value, Allocator, Map>::oi_base;
+				using oi_base<Key, Value, Allocator, Map>::operator=;
+				oi_single& operator=(std::initializer_list<value_type> il) {
+					insert(il);
+					return *this;
+				}
 
 				// Element Access:
 
@@ -643,6 +649,11 @@ namespace neo {
 				// Constructors:
 
 				using oi_base<Key, Value, Allocator, Map>::oi_base;
+				using oi_base<Key, Value, Allocator, Map>::operator=;
+				oi_multi& operator=(std::initializer_list<value_type> il) {
+					insert(il);
+					return *this;
+				}
 
 				// Modifiers:
 
@@ -750,7 +761,7 @@ namespace neo {
 				// Constructors:
 
 				using MBase::MBase;
-				oi_ordered() {} // GCC complains w/o this
+				oi_ordered() {}
 				explicit oi_ordered(const key_compare& comp, const allocator_type& alloc = allocator_type()) : MBase(alloc, comp) {}
 				template<class InputIterator>
 				oi_ordered(InputIterator left, InputIterator right, const key_compare& comp = key_compare(), const allocator_type& alloc = allocator_type()) :oi_ordered(comp, alloc) {
@@ -864,7 +875,7 @@ namespace neo {
 				// Constructors:
 
 				using MBase::MBase;
-				oi_unordered() {} // GCC complains w/o this
+				oi_unordered() {}
 				explicit oi_unordered(size_type n, const hasher& hf = hasher(), const key_equal& eql = key_equal(), const allocator_type& alloc = allocator_type()) : MBase(alloc, n, hf, eql) {}
 				explicit oi_unordered(const allocator_type& alloc) : MBase(alloc) {}
 				oi_unordered(size_type n, const allocator_type& alloc) : oi_unordered(n, hasher(), key_equal(), alloc) {}
@@ -1012,7 +1023,7 @@ namespace neo {
 		public:
 			using __oi_map_details::oi_map_gen<Key, Value, Allocator, __oi_map_details::oi_unordered, __oi_map_details::oi_multi, std::unordered_multimap, Hash, Predicate>::oi_unordered;
 	};
-	
+
 }
 
 
