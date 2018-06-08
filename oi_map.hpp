@@ -689,7 +689,7 @@ namespace neo {
 
 		};
 
-		template<class Key, class Value, class Allocator, class OiBase, class Map>
+		template<class OiBase>
 		class oi_ordered : public OiBase {
 
 			protected:
@@ -760,7 +760,7 @@ namespace neo {
 
 		};
 
-		template<class Key, class Value, class Allocator, class OiBase, class Map>
+		template<class OiBase>
 		class oi_unordered : public OiBase {
 
 			protected:
@@ -883,15 +883,12 @@ namespace neo {
 
 		};
 
-		template<class Key, class Value, class Allocator, template<class...> class OiOrder, template<class, class, class, class, template<class...> class> class OiType, template<class...> class STL, class... Preds>
-		using oi_map_gen = OiOrder<Key, Value, Allocator, OiType<Key, Value, Allocator, STL<Key, typename std::list<std::pair<const Key, Value>>::iterator, Preds...>, STL>, STL<Key, typename std::list<std::pair<const Key, Value>>::iterator, Preds...>>;
-
 	}
 
 	template<class Key, class Value, class Predicate = std::less<Key>, class Allocator = std::allocator<std::pair<const Key, Value>>>
-	class oi_map : public __oi_map_details::oi_map_gen<Key, Value, Allocator, __oi_map_details::oi_ordered, __oi_map_details::oi_single, std::map, Predicate> {
+	class oi_map : public __oi_map_details::oi_ordered<__oi_map_details::oi_single<Key, Value, Allocator, std::map<Key, typename std::list<std::pair<const Key, Value>>::iterator, Predicate>, std::map>> {
 		public:
-			using __oi_map_details::oi_map_gen<Key, Value, Allocator, __oi_map_details::oi_ordered, __oi_map_details::oi_single, std::map, Predicate>::oi_ordered;
+			using __oi_map_details::oi_ordered<__oi_map_details::oi_single<Key, Value, Allocator, std::map<Key, typename std::list<std::pair<const Key, Value>>::iterator, Predicate>, std::map>>::oi_ordered;
 			typename oi_map::iterator lower_bound(const typename oi_map::key_type& key) {
 				return this->_map.lower_bound(key)->second;
 			}
@@ -907,9 +904,9 @@ namespace neo {
 	};
 
 	template<class Key, class Value, class Predicate = std::less<Key>, class Allocator = std::allocator<std::pair<const Key, Value>>>
-	class oi_multimap : public __oi_map_details::oi_map_gen<Key, Value, Allocator, __oi_map_details::oi_ordered, __oi_map_details::oi_multi, std::multimap, Predicate> {
+	class oi_multimap : public __oi_map_details::oi_ordered<__oi_map_details::oi_multi<Key, Value, Allocator, std::multimap<Key, typename std::list<std::pair<const Key, Value>>::iterator, Predicate>, std::multimap>> {
 		public:
-			using __oi_map_details::oi_map_gen<Key, Value, Allocator, __oi_map_details::oi_ordered, __oi_map_details::oi_multi, std::multimap, Predicate>::oi_ordered;
+			using __oi_map_details::oi_ordered<__oi_map_details::oi_multi<Key, Value, Allocator, std::multimap<Key, typename std::list<std::pair<const Key, Value>>::iterator, Predicate>, std::multimap>>::oi_ordered;
 			typename oi_multimap::m_iterator lower_bound(const typename oi_multimap::key_type& key) {
 				return this->_map.lower_bound(key);
 			}
@@ -925,15 +922,15 @@ namespace neo {
 	};
 
 	template<class Key, class Value, class Hash = std::hash<Key>, class Predicate = std::equal_to<Key>, class Allocator = std::allocator<std::pair<const Key, Value>>>
-	class oi_unordered_map : public __oi_map_details::oi_map_gen<Key, Value, Allocator, __oi_map_details::oi_unordered, __oi_map_details::oi_single, std::unordered_map, Hash, Predicate> {
+	class oi_unordered_map : public __oi_map_details::oi_unordered<__oi_map_details::oi_single<Key, Value, Allocator, std::unordered_map<Key, typename std::list<std::pair<const Key, Value>>::iterator, Hash, Predicate>, std::unordered_map>> {
 		public:
-			using __oi_map_details::oi_map_gen<Key, Value, Allocator, __oi_map_details::oi_unordered, __oi_map_details::oi_single, std::unordered_map, Hash, Predicate>::oi_unordered;
+			using __oi_map_details::oi_unordered<__oi_map_details::oi_single<Key, Value, Allocator, std::unordered_map<Key, typename std::list<std::pair<const Key, Value>>::iterator, Hash, Predicate>, std::unordered_map>>::oi_unordered;
 	};
 
 	template<class Key, class Value, class Hash = std::hash<Key>, class Predicate = std::equal_to<Key>, class Allocator = std::allocator<std::pair<const Key, Value>>>
-	class oi_unordered_multimap : public __oi_map_details::oi_map_gen<Key, Value, Allocator, __oi_map_details::oi_unordered, __oi_map_details::oi_multi, std::unordered_multimap, Hash, Predicate> {
+	class oi_unordered_multimap : public __oi_map_details::oi_unordered<__oi_map_details::oi_multi<Key, Value, Allocator, std::unordered_multimap<Key, typename std::list<std::pair<const Key, Value>>::iterator, Hash, Predicate>, std::unordered_multimap>> {
 		public:
-			using __oi_map_details::oi_map_gen<Key, Value, Allocator, __oi_map_details::oi_unordered, __oi_map_details::oi_multi, std::unordered_multimap, Hash, Predicate>::oi_unordered;
+			using __oi_map_details::oi_unordered<__oi_map_details::oi_multi<Key, Value, Allocator, std::unordered_multimap<Key, typename std::list<std::pair<const Key, Value>>::iterator, Hash, Predicate>, std::unordered_multimap>>::oi_unordered;
 	};
 
 }
