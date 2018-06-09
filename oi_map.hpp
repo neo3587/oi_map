@@ -64,23 +64,23 @@ namespace neo {
 				}
 
 				IterChild& operator++() {
-					++this->_iter;
+					++_iter;
 					return static_cast<IterChild&>(*this);
 				}
 				IterChild operator++(int) {
 					oi_iterator tmp(*this);
 					++(*this);
-					return tmp;
+					return static_cast<IterChild&>(tmp);
 				}
 
 				IterChild& operator--() {
-					--this->_iter;
+					--_iter;
 					return static_cast<IterChild&>(*this);
 				}
 				IterChild operator--(int) {
 					oi_iterator tmp(*this);
 					--(*this);
-					return tmp;
+					return static_cast<IterChild&>(tmp);
 				}
 
 				reference operator*() {
