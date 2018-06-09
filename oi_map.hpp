@@ -75,7 +75,7 @@ namespace neo {
 
 				IterChild& operator--() {
 					--this->_iter;
-					return *this;
+					return static_cast<IterChild&>(*this);
 				}
 				IterChild operator--(int) {
 					oi_iterator tmp(*this);
